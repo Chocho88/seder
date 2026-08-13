@@ -11,6 +11,7 @@ import SettingsMenu from './components/SettingsMenu';
 import MobileBar from './components/MobileBar';
 import Toast from './components/Toast';
 import TouchDragLayer from './components/TouchDragLayer';
+import LogbookPanel from './components/LogbookPanel';
 
 // One clean scrollable column on phones: lists on top, matrix below (the
 // user's whiteboard sketch). Desktop is the holistic canvas — no tabs.
@@ -104,6 +105,7 @@ export default function App() {
       {isMobile && <MobileBar />}
       <Toast />
       <TouchDragLayer />
+      <LogbookPanel />
     </div>
   );
 }

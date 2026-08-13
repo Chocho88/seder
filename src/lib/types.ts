@@ -33,6 +33,7 @@ export interface Item {
 
   today: boolean;
   todaySince: number | null; // for rollover aging ("2d")
+  evening?: boolean; // Things-style "This Evening": today's quieter second shelf
   pinned: boolean;
   matrixOrder?: number; // manual visual order inside a matrix quadrant
 

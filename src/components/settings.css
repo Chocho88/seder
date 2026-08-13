@@ -99,3 +99,32 @@ html[data-fontsize='s'] {
 html[data-fontsize='l'] {
   font-size: 18px;
 }
+
+.settings-divider {
+  border-block-start: 1px solid var(--border-color);
+  margin-block: var(--space-1);
+}
+.settings-action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: var(--space-1-5) var(--space-1);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: start;
+}
+.settings-action:hover {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+.settings-action .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--text-tertiary);
+}

@@ -36,6 +36,27 @@ function applyOverridesNow(): void {
   html.setAttribute('data-colored', colored);
 }
 
+// --- Theme mode: light / dark / system (Things-style Auto) ---
+export type ThemeMode = 'light' | 'dark' | 'system';
+const THEME_MODE_KEY = 'seder-thememode';
+const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
+
+export function getThemeMode(): ThemeMode {
+  const v = localStorage.getItem(THEME_MODE_KEY);
+  return v === 'light' || v === 'dark' || v === 'system' ? v : 'light';
+}
+
+export function applyThemeMode(mode: ThemeMode): void {
+  localStorage.setItem(THEME_MODE_KEY, mode);
+  const resolved = mode === 'system' ? (systemDark.matches ? 'dark' : 'light') : mode;
+  document.documentElement.setAttribute('data-theme', resolved);
+  localStorage.setItem(KEYS.theme, resolved);
+}
+
+systemDark.addEventListener('change', () => {
+  if (getThemeMode() === 'system') applyThemeMode('system');
+});
+
 export function setFontSize(size: 's' | 'm' | 'l'): void {
   localStorage.setItem(KEYS.fontsize, size);
   document.documentElement.setAttribute('data-fontsize', size);

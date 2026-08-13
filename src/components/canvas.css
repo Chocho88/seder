@@ -163,3 +163,26 @@
     position: static;
   }
 }
+
+/* --- This Evening shelf --- */
+.canvas-evening {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background var(--duration-fast) var(--ease-default);
+}
+.canvas-evening.drag-over {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+
+/* logbook entry: rides the date line, always reachable */
+.canvas-logbook-btn {
+  opacity: 1;
+  pointer-events: auto;
+  position: static;
+  transform: none;
+  margin-inline-start: auto;
+}

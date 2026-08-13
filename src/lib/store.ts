@@ -40,6 +40,9 @@ interface SederState {
   undoStack: Item[][];
   toast: { label: string; at: number } | null;
 
+  suggestionsOn: boolean; // settings: morning suggestions visibility
+  logbookOpen: boolean;
+
   // --- lifecycle ---
   init(): Promise<void>;
 
@@ -75,6 +78,11 @@ interface SederState {
 
   undo(): Promise<void>;
   clearToast(): void;
+
+  setSuggestionsOn(on: boolean): void;
+  setLogbookOpen(open: boolean): void;
+  /** Bring an archived item back to life in its list. */
+  restoreItem(id: string): Promise<void>;
 }
 
 async function loadAll(): Promise<{ items: Item[]; categories: Category[] }> {
@@ -108,6 +116,8 @@ export const useSeder = create<SederState>((set, get) => {
   touchDrag: null,
   undoStack: [],
   toast: null,
+  suggestionsOn: localStorage.getItem('seder-suggestions') !== 'off',
+  logbookOpen: false,
 
   async init() {
     await seedIfEmpty(wantsFreshSeed());
@@ -367,6 +377,9 @@ export const useSeder = create<SederState>((set, get) => {
     } else if (parts[0] === 'tray') {
       pushUndo();
       await get().updateItem(dragId, { urgent: null, important: null });
+    } else if (parts[0] === 'evening') {
+      pushUndo();
+      await get().updateItem(dragId, { today: true, evening: true, todaySince: Date.now() });
     } else if (parts[0] === 'cat') {
       await get().moveItemToCategory(dragId, parts[1]);
     } else if (parts[0] === 'pin') {
@@ -393,6 +406,21 @@ export const useSeder = create<SederState>((set, get) => {
 
   clearToast() {
     set({ toast: null });
+  },
+
+  setSuggestionsOn(on) {
+    localStorage.setItem('seder-suggestions', on ? 'on' : 'off');
+    set({ suggestionsOn: on });
+  },
+  setLogbookOpen(open) {
+    set({ logbookOpen: open });
+  },
+
+  async restoreItem(id) {
+    const patch = { archivedAt: null, done: false, doneAt: null, updatedAt: Date.now() };
+    await db.items.update(id, patch);
+    const restored = await db.items.get(id);
+    if (restored) set({ items: [...get().items, restored] });
   },
   };
 });

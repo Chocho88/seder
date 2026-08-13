@@ -18,7 +18,7 @@ const SPLIT_KEY = 'seder-split';
 const ROWMIN_KEY = 'seder-matrix-rowmin';
 
 export default function Canvas() {
-  const { items, setToday, sweepDone, updateItem } = useSeder();
+  const { items, setToday, sweepDone, updateItem, suggestionsOn, setLogbookOpen, dragItemId, dropOn } = useSeder();
   const [lang] = useLang();
   const canvasRef = useRef<HTMLDivElement>(null);
   const [split, setSplit] = useState<number>(() => Number(localStorage.getItem(SPLIT_KEY)) || 42);
@@ -26,8 +26,9 @@ export default function Canvas() {
     const v = Number(localStorage.getItem(ROWMIN_KEY));
     return v > 0 ? v : null;
   });
-  const suggestions = morningCandidates(items).slice(0, 4);
+  const suggestions = suggestionsOn ? morningCandidates(items).slice(0, 4) : [];
   const doneToday = items.filter((i) => i.done);
+  const eveningItems = items.filter((i) => i.evening && i.today && !i.done);
 
   const dateLabel = new Intl.DateTimeFormat(lang === 'he' ? 'he-IL' : 'en-US', {
     weekday: 'long',
@@ -69,6 +70,16 @@ export default function Canvas() {
         <header className="canvas-date">
           <span className="canvas-date-dot" aria-hidden />
           <h1 className="canvas-date-label">{dateLabel}</h1>
+          <button
+            className="item-action tooltip canvas-logbook-btn"
+            data-tooltip={t('logbook')}
+            aria-label={t('logbook')}
+            onClick={() => setLogbookOpen(true)}
+          >
+            <svg className="icon">
+              <use href={`${icons}#icon-archive`} />
+            </svg>
+          </button>
         </header>
 
         {suggestions.length > 0 && (
@@ -119,6 +130,27 @@ export default function Canvas() {
             localStorage.removeItem(ROWMIN_KEY);
           }}
         />
+
+        {/* This Evening: today's quieter second shelf (Things). Always a
+            drop target while dragging, so tonight is one gesture away. */}
+        {(eveningItems.length > 0 || dragItemId !== null) && (
+          <div
+            className="canvas-evening"
+            data-drop="evening"
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => void dropOn('evening')}
+          >
+            <h3 className="canvas-section-label">
+              <svg className="icon" aria-hidden="true">
+                <use href={`${icons}#icon-moon`} />
+              </svg>
+              {t('evening')}
+            </h3>
+            {eveningItems.map((i) => (
+              <ItemRow key={i.id} item={i} leaf />
+            ))}
+          </div>
+        )}
 
         {doneToday.length > 0 && (
           <div className="canvas-done">

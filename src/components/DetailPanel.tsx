@@ -158,6 +158,22 @@ export default function DetailPanel({ itemId }: { itemId: string }) {
               </svg>
             </button>
             <button
+              className={`detail-toggle detail-toggle--evening pressable tooltip ${item.evening ? 'on' : ''}`}
+              aria-pressed={!!item.evening}
+              data-tooltip={t('evening')}
+              aria-label={t('evening')}
+              onClick={() =>
+                void updateItem(item.id, {
+                  evening: !item.evening,
+                  ...(item.evening ? {} : { today: true, todaySince: item.todaySince ?? Date.now() }),
+                })
+              }
+            >
+              <svg className="icon icon-sm">
+                <use href={`${icons}#icon-moon`} />
+              </svg>
+            </button>
+            <button
               className={`detail-toggle detail-toggle--urgent pressable tooltip ${item.urgent ? 'on' : ''}`}
               aria-pressed={!!item.urgent}
               data-tooltip={t('urgent')}

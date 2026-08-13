@@ -133,8 +133,22 @@ export default function ItemRow({ item, depth = 0, leaf = false }: { item: Item;
           {item.title}
         </span>
 
-        {/* rest signals: only what's instantly legible — a pin, sub-count */}
+        {/* rest signals: only what's instantly legible - a pin, sub-count,
+            and a Things-style deadline flag when a due date approaches */}
         <span className="item-rest">
+          {item.due !== null && !item.done && (
+            <span
+              className={`item-due${item.due < Date.now() ? ' overdue' : item.due < Date.now() + 2 * 86400000 ? ' soon' : ''}`}
+            >
+              <svg className="icon" aria-hidden="true">
+                <use href={`${icons}#icon-flag`} />
+              </svg>
+              {new Intl.DateTimeFormat(document.documentElement.lang === 'he' ? 'he-IL' : 'en-US', {
+                day: 'numeric',
+                month: 'short',
+              }).format(new Date(item.due))}
+            </span>
+          )}
           {item.pinned && (
             <svg className="icon item-rest-pin" aria-hidden="true">
               <use href={`${icons}#icon-pin`} />

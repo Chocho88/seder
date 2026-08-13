@@ -373,3 +373,25 @@
   height: 12px;
   display: block;
 }
+
+/* --- Deadline flag: quiet until it matters --- */
+.item-due {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+.item-due .icon {
+  width: 11px;
+  height: 11px;
+}
+.item-due.soon {
+  color: var(--color-warning);
+}
+.item-due.overdue {
+  color: var(--color-error);
+}
