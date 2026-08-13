@@ -16,7 +16,7 @@ import ItemRow from './ItemRow';
 import './matrix.css';
 
 const LOCAL = {
-  unplaced: { en: 'Today, not placed', he: 'להיום, בלי מיקום' },
+  unplaced: { en: 'Today - drag into place', he: 'להיום - גררו למיקום' },
 } as const;
 
 type Quadrant = { urgent: boolean; important: boolean };
@@ -32,7 +32,7 @@ const qKey = (q: Quadrant) => `${q.urgent ? 'u' : 'nu'}-${q.important ? 'i' : 'n
 const mo = (i: Item) => i.matrixOrder ?? i.createdAt;
 
 export default function MatrixView() {
-  const { items, updateItem, dragItemId, setDragItem } = useSeder();
+  const { items, dragItemId, dropOn } = useSeder();
   const [lang] = useLang();
   const [overKey, setOverKey] = useState<string | null>(null);
   const [insertBefore, setInsertBefore] = useState<string | null>(null);
@@ -47,32 +47,8 @@ export default function MatrixView() {
       .sort((a, b) => mo(a) - mo(b));
 
   const finishDrag = () => {
-    setDragItem(null);
     setOverKey(null);
     setInsertBefore(null);
-  };
-
-  /** Drop on quadrant background: apply flags, order at the end. */
-  const dropOnQuadrant = (q: Quadrant) => {
-    if (!dragItemId) return finishDrag();
-    const siblings = inQuadrant(q).filter((i) => i.id !== dragItemId);
-    const last = siblings.length ? mo(siblings[siblings.length - 1]) : 0;
-    void updateItem(dragItemId, { urgent: q.urgent, important: q.important, matrixOrder: last + 1000 });
-    finishDrag();
-  };
-
-  /** Drop on a row: same flags as that row, inserted visually before it. */
-  const dropOnRow = (q: Quadrant, target: Item) => {
-    if (!dragItemId || dragItemId === target.id) return finishDrag();
-    const siblings = inQuadrant(q).filter((i) => i.id !== dragItemId);
-    const idx = siblings.findIndex((i) => i.id === target.id);
-    const prev = idx > 0 ? mo(siblings[idx - 1]) : mo(target) - 2000;
-    void updateItem(dragItemId, {
-      urgent: q.urgent,
-      important: q.important,
-      matrixOrder: (prev + mo(target)) / 2,
-    });
-    finishDrag();
   };
 
   return (
@@ -89,17 +65,22 @@ export default function MatrixView() {
           <div
             key={key}
             className={`matrix-quadrant mq-${key}${overKey === key ? ' drag-over' : ''}`}
+            data-drop={`q:${key}`}
             onDragOver={(e) => {
               e.preventDefault();
               setOverKey(key);
             }}
             onDragLeave={() => setOverKey((k) => (k === key ? null : k))}
-            onDrop={() => dropOnQuadrant(q)}
+            onDrop={() => {
+              void dropOn(`q:${key}`);
+              finishDrag();
+            }}
           >
             {inhabitants.map((i) => (
               <div
                 key={i.id}
                 className={`matrix-slot${insertBefore === i.id ? ' insert-before' : ''}`}
+                data-drop={`q:${key}:before:${i.id}`}
                 onDragOver={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -109,7 +90,8 @@ export default function MatrixView() {
                 onDragLeave={() => setInsertBefore((v) => (v === i.id ? null : v))}
                 onDrop={(e) => {
                   e.stopPropagation();
-                  dropOnRow(q, i);
+                  void dropOn(`q:${key}:before:${i.id}`);
+                  finishDrag();
                 }}
               >
                 <ItemRow item={i} leaf />
@@ -125,13 +107,14 @@ export default function MatrixView() {
       {(todayUnflagged.length > 0 || dragItemId !== null) && (
         <div
           className={`matrix-unplaced${overKey === 'tray' ? ' drag-over' : ''}`}
+          data-drop="tray"
           onDragOver={(e) => {
             e.preventDefault();
             setOverKey('tray');
           }}
           onDragLeave={() => setOverKey((k) => (k === 'tray' ? null : k))}
           onDrop={() => {
-            if (dragItemId) void updateItem(dragItemId, { urgent: null, important: null });
+            void dropOn('tray');
             finishDrag();
           }}
         >

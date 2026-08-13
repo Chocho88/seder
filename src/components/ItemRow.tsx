@@ -24,6 +24,9 @@ export default function ItemRow({ item, depth = 0, leaf = false }: { item: Item;
   const kids = childrenOf(items, item.id);
   const rowRef = useRef<HTMLDivElement>(null);
   const timer = useRef<number | null>(null);
+  const touchTimer = useRef<number | null>(null);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const { setTouchDrag } = useSeder();
   const [preview, setPreview] = useState<{ x: number; y: number; end: boolean } | null>(null);
 
   const clearTimer = () => {
@@ -81,6 +84,31 @@ export default function ItemRow({ item, depth = 0, leaf = false }: { item: Item;
         }}
         onMouseEnter={armPreview}
         onMouseLeave={disarmPreview}
+        // touch: long-press picks the row up (the TouchDragLayer takes over)
+        onPointerDown={(e) => {
+          if (e.pointerType !== 'touch') return;
+          touchStart.current = { x: e.clientX, y: e.clientY };
+          touchTimer.current = window.setTimeout(() => {
+            setDragItem(item.id);
+            setTouchDrag({ x: touchStart.current!.x, y: touchStart.current!.y, title: item.title });
+            (navigator as any).vibrate?.(12);
+          }, 320);
+        }}
+        onPointerMove={(e) => {
+          if (e.pointerType !== 'touch' || touchTimer.current === null || !touchStart.current) return;
+          if (Math.hypot(e.clientX - touchStart.current.x, e.clientY - touchStart.current.y) > 10) {
+            window.clearTimeout(touchTimer.current);
+            touchTimer.current = null;
+          }
+        }}
+        onPointerUp={() => {
+          if (touchTimer.current !== null) window.clearTimeout(touchTimer.current);
+          touchTimer.current = null;
+        }}
+        onPointerCancel={() => {
+          if (touchTimer.current !== null) window.clearTimeout(touchTimer.current);
+          touchTimer.current = null;
+        }}
       >
         {item.kind === 'task' ? (
           <button

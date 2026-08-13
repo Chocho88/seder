@@ -86,7 +86,7 @@ function BentoItem({ category, children }: { category: Category; children: React
 }
 
 export default function Board() {
-  const { items, categories, addCategory, dragItemId, setDragItem, updateItem } = useSeder();
+  const { items, categories, addCategory, dragItemId, dropOn } = useSeder();
   const pinned = items.filter((i) => i.pinned && !i.done);
   const [pinOver, setPinOver] = useState(false);
   const dragUnpinned = dragItemId !== null && !items.find((i) => i.id === dragItemId)?.pinned;
@@ -96,6 +96,7 @@ export default function Board() {
       {(pinned.length > 0 || dragUnpinned) && (
         <section
           className={`board-pinned${pinOver ? ' drag-over' : ''}`}
+          data-drop="pin"
           onDragOver={(e) => {
             if (dragUnpinned) {
               e.preventDefault();
@@ -105,10 +106,7 @@ export default function Board() {
           onDragLeave={() => setPinOver(false)}
           onDrop={() => {
             setPinOver(false);
-            if (dragUnpinned && dragItemId) {
-              void updateItem(dragItemId, { pinned: true });
-              setDragItem(null);
-            }
+            if (dragUnpinned && dragItemId) void dropOn('pin');
           }}
         >
           <header className="board-pinned-header">

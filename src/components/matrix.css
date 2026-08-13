@@ -176,3 +176,15 @@
   background: var(--color-accent);
   pointer-events: none;
 }
+
+/* --- Matrix rows as boxed chips, each wearing its list's color --- */
+.matrix .item-row {
+  background: linear-gradient(var(--cat-tint, transparent), var(--cat-tint, transparent)), var(--surface-card);
+  border: 1px solid color-mix(in srgb, var(--cat-color, var(--border-color)) 55%, var(--border-color));
+  border-radius: var(--radius-md);
+  margin-block-end: var(--space-1-5);
+  padding-block: var(--space-1-5);
+}
+.matrix .item-row:hover {
+  border-color: var(--cat-color, var(--border-color-strong));
+}

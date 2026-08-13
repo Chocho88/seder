@@ -18,7 +18,7 @@ export default function CategoryCard({ category }: { category: Category }) {
     dragCategoryId,
     setDragCategory,
     setDragItem,
-    moveItemToCategory,
+    dropOn,
     reorderCategory,
     updateCategory,
   } = useSeder();
@@ -45,6 +45,7 @@ export default function CategoryCard({ category }: { category: Category }) {
       className={`category-card${over ? ' drag-over' : ''}`}
       data-cat={category.colorKey}
       data-system={category.system ? '' : undefined}
+      data-drop={`cat:${category.id}`}
       onDragOver={(e) => {
         if (dragForeign || (dragCategoryId && dragCategoryId !== category.id)) {
           e.preventDefault();
@@ -55,8 +56,7 @@ export default function CategoryCard({ category }: { category: Category }) {
       onDrop={() => {
         setOver(false);
         if (dragForeign && dragItemId) {
-          void moveItemToCategory(dragItemId, category.id);
-          setDragItem(null);
+          void dropOn(`cat:${category.id}`);
         } else if (dragCategoryId && dragCategoryId !== category.id) {
           void reorderCategory(dragCategoryId, category.id);
           setDragCategory(null);

@@ -1,0 +1,22 @@
+.touchdrag-ghost {
+  position: fixed;
+  z-index: var(--z-toast);
+  transform: translate(-50%, -130%);
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: var(--space-1-5) var(--space-3);
+  background: var(--surface-card);
+  border: 1px solid var(--border-color-strong);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-xl);
+  font-size: var(--text-sm);
+  pointer-events: none;
+}
+
+/* while a touch drag is active, stop the page from scroll-fighting */
+:root:has(.touchdrag-ghost) body {
+  overflow: hidden;
+  touch-action: none;
+}

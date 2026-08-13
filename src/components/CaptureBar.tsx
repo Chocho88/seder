@@ -6,6 +6,7 @@ import icons from '../../../design-system/icons.svg';
 import { useSeder } from '../lib/store';
 import { useLang } from '../lib/i18n';
 import { dirProps } from '../lib/rtl';
+import { parseDueDate, formatDue } from '../lib/dates';
 import './capture.css';
 
 // Footer syntax-hint labels (chrome strings local to this bar; the shared
@@ -70,7 +71,15 @@ export default function CaptureBar() {
         rest = rest.replace(hash[0], '');
       }
     }
-    return { title: rest.trim(), today, category };
+    // natural-language dates: "מחר", "friday"... "today/היום" means the flag
+    let due: number | null = null;
+    const parsedDate = parseDueDate(rest);
+    if (parsedDate) {
+      if (/^(today|היום)$/i.test(parsedDate.token)) today = true;
+      else due = parsedDate.due;
+      rest = rest.replace(parsedDate.token, ' ').replace(/\s{2,}/g, ' ');
+    }
+    return { title: rest.trim(), today, category, due };
   }, [text, categories, chosenCatId, pool]);
 
   const matches = useMemo(() => {
@@ -83,7 +92,7 @@ export default function CaptureBar() {
 
   const submit = async () => {
     if (!parsed.title || !parsed.category) return;
-    await addItem({ title: parsed.title, categoryId: parsed.category.id, today: parsed.today });
+    await addItem({ title: parsed.title, categoryId: parsed.category.id, today: parsed.today, due: parsed.due });
     setCaptureOpen(false);
   };
 
@@ -171,6 +180,9 @@ export default function CaptureBar() {
             </span>
           )}
           {parsed.today && <span className="capture-today-flag">{t('today_flag')}</span>}
+          {parsed.due !== null && (
+            <span className="capture-today-flag capture-due-chip">{formatDue(parsed.due, lang)}</span>
+          )}
           <button
             className={`capture-mic pressable ${listening ? 'listening' : ''}`}
             aria-label="Dictate"

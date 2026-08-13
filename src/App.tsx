@@ -9,6 +9,8 @@ import DetailPanel from './components/DetailPanel';
 import CaptureBar from './components/CaptureBar';
 import SettingsMenu from './components/SettingsMenu';
 import MobileBar from './components/MobileBar';
+import Toast from './components/Toast';
+import TouchDragLayer from './components/TouchDragLayer';
 
 // One clean scrollable column on phones: lists on top, matrix below (the
 // user's whiteboard sketch). Desktop is the holistic canvas — no tabs.
@@ -32,12 +34,19 @@ export default function App() {
     void init();
   }, [init]);
 
-  // Global shortcut: Cmd+K capture
+  // Global shortcuts: Cmd+K capture, Cmd+Z undo (outside text fields)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setCaptureOpen(true);
+      }
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        const tag = (document.activeElement?.tagName ?? '').toLowerCase();
+        if (tag !== 'input' && tag !== 'textarea') {
+          e.preventDefault();
+          void useSeder.getState().undo();
+        }
       }
     };
     window.addEventListener('keydown', onKey);
@@ -93,6 +102,8 @@ export default function App() {
       {openItemId && <DetailPanel key={openItemId} itemId={openItemId} />}
       <CaptureBar />
       {isMobile && <MobileBar />}
+      <Toast />
+      <TouchDragLayer />
     </div>
   );
 }

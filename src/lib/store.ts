@@ -4,6 +4,7 @@
 import { create } from 'zustand';
 import { db, uid } from './db';
 import { seedIfEmpty } from './seed';
+import { t } from './i18n';
 import type { CardStyle, Category, DetailMode, Item, ViewId } from './types';
 import {
   initialCardStyle,
@@ -33,6 +34,11 @@ interface SederState {
   // shelf (pins it). Cards themselves drag to reorder.
   dragItemId: string | null;
   dragCategoryId: string | null;
+  touchDrag: { x: number; y: number; title: string } | null; // long-press drag on touch
+
+  // Undo: full item-state snapshots, restored by Cmd+Z or the toast button
+  undoStack: Item[][];
+  toast: { label: string; at: number } | null;
 
   // --- lifecycle ---
   init(): Promise<void>;
@@ -58,8 +64,17 @@ interface SederState {
   setCaptureOpen(open: boolean, dictate?: boolean): void;
   setDragItem(id: string | null): void;
   setDragCategory(id: string | null): void;
+  setTouchDrag(v: { x: number; y: number; title: string } | null): void;
   moveItemToCategory(id: string, categoryId: string): Promise<void>;
   reorderCategory(dragId: string, targetId: string): Promise<void>;
+
+  /** Reindexes a quadrant: dragged item gets flags + its visual position. */
+  applyMatrixDrop(dragId: string, flags: { urgent: boolean | null; important: boolean | null }, orderedIds: string[]): Promise<void>;
+  /** Central drop executor - shared by mouse drops and touch drops. */
+  dropOn(key: string): Promise<void>;
+
+  undo(): Promise<void>;
+  clearToast(): void;
 }
 
 async function loadAll(): Promise<{ items: Item[]; categories: Category[] }> {
@@ -71,7 +86,14 @@ async function loadAll(): Promise<{ items: Item[]; categories: Category[] }> {
   return { items, categories };
 }
 
-export const useSeder = create<SederState>((set, get) => ({
+export const useSeder = create<SederState>((set, get) => {
+  /** Snapshot current items for undo (small dataset - full copy is fine). */
+  const pushUndo = (toastLabel?: string) => {
+    const stack = [...get().undoStack, get().items.map((i) => ({ ...i }))].slice(-20);
+    set({ undoStack: stack, ...(toastLabel ? { toast: { label: toastLabel, at: Date.now() } } : {}) });
+  };
+
+  return {
   ready: false,
   items: [],
   categories: [],
@@ -83,6 +105,9 @@ export const useSeder = create<SederState>((set, get) => ({
   captureDictate: false,
   dragItemId: null,
   dragCategoryId: null,
+  touchDrag: null,
+  undoStack: [],
+  toast: null,
 
   async init() {
     await seedIfEmpty(wantsFreshSeed());
@@ -175,11 +200,13 @@ export const useSeder = create<SederState>((set, get) => ({
   async toggleDone(id) {
     const it = get().items.find((i) => i.id === id);
     if (!it) return;
+    pushUndo();
     const done = !it.done;
     await get().updateItem(id, { done, doneAt: done ? Date.now() : null });
   },
 
   async sweepDone() {
+    pushUndo(t('toast_swept'));
     const now = Date.now();
     const doneIds = get()
       .items.filter((i) => i.done)
@@ -189,6 +216,7 @@ export const useSeder = create<SederState>((set, get) => ({
   },
 
   async deleteItem(id) {
+    pushUndo(t('toast_deleted'));
     await db.items.delete(id);
     set({ items: get().items.filter((i) => i.id !== id), openItemId: get().openItemId === id ? null : get().openItemId });
   },
@@ -239,16 +267,20 @@ export const useSeder = create<SederState>((set, get) => ({
   },
 
   setDragItem(id) {
-    set({ dragItemId: id });
+    set({ dragItemId: id, ...(id === null ? { touchDrag: null } : {}) });
   },
   setDragCategory(id) {
     set({ dragCategoryId: id });
+  },
+  setTouchDrag(v) {
+    set({ touchDrag: v });
   },
 
   async moveItemToCategory(id, categoryId) {
     const all = get().items;
     const it = all.find((i) => i.id === id);
     if (!it || it.categoryId === categoryId) return;
+    pushUndo(t('toast_moved'));
     // the item becomes a top-level row of its new list; descendants follow
     const family = [id];
     const collect = (pid: string) => {
@@ -285,7 +317,85 @@ export const useSeder = create<SederState>((set, get) => ({
     });
     set({ categories: reordered });
   },
-}));
+
+  async applyMatrixDrop(dragId, flags, orderedIds) {
+    pushUndo();
+    const now = Date.now();
+    const orderOf = new Map(orderedIds.map((id, i) => [id, (i + 1) * 1000]));
+    await db.transaction('rw', db.items, async () => {
+      await db.items.update(dragId, { urgent: flags.urgent, important: flags.important, updatedAt: now });
+      for (const [id, ord] of orderOf) await db.items.update(id, { matrixOrder: ord });
+    });
+    set({
+      items: get().items.map((i) => {
+        const patch: Partial<Item> = {};
+        if (i.id === dragId) Object.assign(patch, { urgent: flags.urgent, important: flags.important, updatedAt: now });
+        if (orderOf.has(i.id)) patch.matrixOrder = orderOf.get(i.id);
+        return Object.keys(patch).length ? { ...i, ...patch } : i;
+      }),
+    });
+  },
+
+  // Central drop executor. Keys:
+  //   q:<u|nu>-<i|ni>[:before:<itemId>]  - quadrant, optional insert position
+  //   tray                               - clear flags (stays today)
+  //   cat:<categoryId>                   - move to list
+  //   pin                                - pin to the shelf
+  async dropOn(key) {
+    const dragId = get().dragItemId;
+    if (!dragId) return;
+    const parts = key.split(':');
+    if (parts[0] === 'q') {
+      const [u, imp] = parts[1].split('-');
+      const flags = { urgent: u === 'u', important: imp === 'i' };
+      const pool = get()
+        .items.filter(
+          (i) =>
+            !i.done &&
+            i.parentId === null &&
+            i.id !== dragId &&
+            (i.urgent ?? false) === flags.urgent &&
+            (i.important ?? false) === flags.important &&
+            (i.urgent !== null || i.important !== null),
+        )
+        .sort((a, b) => (a.matrixOrder ?? a.createdAt) - (b.matrixOrder ?? b.createdAt));
+      const ids = pool.map((i) => i.id);
+      const beforeIdx = parts[2] === 'before' ? ids.indexOf(parts[3]) : -1;
+      if (beforeIdx >= 0) ids.splice(beforeIdx, 0, dragId);
+      else ids.push(dragId);
+      await get().applyMatrixDrop(dragId, flags, ids);
+    } else if (parts[0] === 'tray') {
+      pushUndo();
+      await get().updateItem(dragId, { urgent: null, important: null });
+    } else if (parts[0] === 'cat') {
+      await get().moveItemToCategory(dragId, parts[1]);
+    } else if (parts[0] === 'pin') {
+      pushUndo();
+      await get().updateItem(dragId, { pinned: true });
+    }
+    set({ dragItemId: null, touchDrag: null });
+  },
+
+  async undo() {
+    const stack = [...get().undoStack];
+    const snapshot = stack.pop();
+    if (!snapshot) return;
+    const currentIds = new Set(get().items.map((i) => i.id));
+    const snapIds = new Set(snapshot.map((i) => i.id));
+    await db.transaction('rw', db.items, async () => {
+      await db.items.bulkPut(snapshot);
+      // items created after the snapshot get removed on undo
+      const added = [...currentIds].filter((id) => !snapIds.has(id));
+      if (added.length) await db.items.bulkDelete(added);
+    });
+    set({ undoStack: stack, items: snapshot, toast: null, openItemId: null });
+  },
+
+  clearToast() {
+    set({ toast: null });
+  },
+  };
+});
 
 // --- Derived helpers (pure, shared by views) ---
 
