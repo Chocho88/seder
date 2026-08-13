@@ -1,8 +1,9 @@
 /* ============================================
    Detail panel — the item, unfolded.
    One field language: borderless rows on a single text column,
-   separated by consistent inset hairlines. One mark gutter
-   (18px + gap) keeps every line of text on the same start edge.
+   grouped by whitespace alone — no rules inside the reading
+   column. One mark gutter (18px + gap) keeps every line of
+   text on the same start edge.
    ============================================ */
 
 .detail-scrim {
@@ -34,8 +35,11 @@
   overflow: hidden;
   /* the shared mark gutter: an 18px mark + the row gap */
   --detail-gutter: calc(18px + var(--space-3));
-  /* every field boundary speaks with this exact voice */
+  /* one hairline in the whole panel: the footer's edge */
   --detail-hairline: 1px solid var(--border-color);
+  /* blocks separate by air, not ink — roughly 1.75x the
+     intra-list rhythm once row paddings are added in */
+  --detail-block-gap: var(--space-3);
 }
 
 @media (max-width: 768px) {
@@ -147,9 +151,6 @@
 }
 
 /* --- Next move: a borderless row like every other field --- */
-.detail-move {
-  border-block-start: var(--detail-hairline);
-}
 .detail-move-row {
   display: flex;
   align-items: center;
@@ -233,7 +234,7 @@
    Empty = a single placeholder row, same voice and gray as the add-item row
    below; the field earns its height only once content exists. */
 .detail-notes-row {
-  border-block-start: var(--detail-hairline);
+  margin-block-start: var(--detail-block-gap);
   padding-block: var(--space-3);
   padding-inline-start: var(--detail-gutter);
   min-height: 44px;
@@ -290,20 +291,16 @@
   opacity: 1;
 }
 
-/* --- Sub-items: hairline checklist on the same column --- */
+/* --- Sub-items: a quiet checklist on the same column ---
+   No rules between rows — the tight row rhythm binds the list,
+   and the wider block gap above sets it apart. */
 .detail-subitems {
-  border-block-start: var(--detail-hairline);
+  margin-block-start: var(--detail-block-gap);
 }
 .detail-subitems .item-row {
   border-radius: 0;
   padding: var(--space-2) 0;
   min-height: 40px;
-}
-.detail-subitems .item-row + .item-row {
-  border-block-start: var(--detail-hairline);
-}
-.detail-subitems .item-row + .detail-subitem-addrow {
-  border-block-start: var(--detail-hairline);
 }
 
 .detail-subitem-addrow {
@@ -343,7 +340,8 @@
 }
 
 /* --- Footer: properties at the bottom edge ---
-   The divider is the same inset hairline as every field boundary. */
+   The panel's only hairline: it fences chrome off from content,
+   so the reading column above stays line-free. */
 .detail-footer {
   display: flex;
   align-items: center;

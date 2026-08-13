@@ -17,10 +17,23 @@ export default function ItemRow({ item, depth = 0 }: { item: Item; depth?: numbe
   const kids = childrenOf(items, item.id);
   const age = item.today ? todayAgeDays(item) : 0;
 
-  // Signals render only when earned — the cluster docks against the
+  // One flag, one slot. A fixed-width gutter sits between checkbox and
+  // title on EVERY row, so all titles share a single start edge. It holds
+  // at most one glyph, and shape — not hue — carries the meaning:
+  // triangle = urgent, diamond = important, ring = pinned. When states
+  // stack, the loudest wins the slot; the detail panel holds the rest.
+  const flag = item.urgent ? 'urgent' : item.important ? 'important' : item.pinned ? 'pinned' : null;
+  const flagLabel = [
+    item.urgent && t('urgent'),
+    item.important && t('important'),
+    item.pinned && t('pinned'),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  // Trailing metadata renders only when earned — it docks against the
   // title's edge, so an empty cluster must not leave a phantom gap.
-  const hasRail = Boolean(item.pinned || kids.length > 0 || item.urgent || item.important || verb);
-  const hasSignals = Boolean(waitingFor) || age >= 2 || hasRail;
+  const hasSignals = Boolean(waitingFor) || age >= 2 || kids.length > 0 || Boolean(verb);
 
   return (
     <>
@@ -57,16 +70,22 @@ export default function ItemRow({ item, depth = 0 }: { item: Item; depth?: numbe
           <span className="item-note-mark" aria-hidden />
         )}
 
+        {/* the flag slot: fixed width whether full or empty — this is
+            what keeps every title on the same start edge */}
+        <span className="item-flagslot" aria-hidden={!flag}>
+          {flag && <span className={`item-flag item-flag-${flag}`} title={flagLabel} />}
+        </span>
+
         <span className="item-title" {...dirProps(item.title)}>
           {item.title}
         </span>
 
-        {/* The signal cluster docks one gap unit off the title's edge —
-            checkbox, title and marks read as ONE group; the row's
+        {/* Trailing metadata docks one gap unit off the title's edge —
+            checkbox, title and text marks read as ONE group; the row's
             inline-end stays deliberate whitespace. Fixed inside→out
-            order: waiting · age · pin · count · urgent · important ·
-            verb (hover-revealed, holding a reserved slot at the outer
-            end so nothing shifts under the hand). */}
+            order: waiting · age · count · verb (hover-revealed, holding
+            a reserved slot at the outer end so nothing shifts under the
+            hand). */}
         {hasSignals && (
           <span className="item-signals">
             {waitingFor && (
@@ -80,23 +99,16 @@ export default function ItemRow({ item, depth = 0 }: { item: Item; depth?: numbe
                 <span>{t('days_short')}</span>
               </span>
             )}
-            {hasRail && (
-              <span className="item-rail">
-                {item.pinned && <span className="item-pin" title={t('pinned')} />}
-                {kids.length > 0 && (
-                  <span className="item-kidcount">
-                    {kids.filter((k) => k.done).length}/{kids.length}
-                  </span>
-                )}
-                {item.urgent && <i className="flag-urgent" title={t('urgent')} />}
-                {item.important && <i className="flag-important" title={t('important')} />}
-                {verb && (
-                  <span className="item-verb" title={verb.key}>
-                    <svg className="icon">
-                      <use href={`${icons}#icon-${verb.icon}`} />
-                    </svg>
-                  </span>
-                )}
+            {kids.length > 0 && (
+              <span className="item-kidcount">
+                {kids.filter((k) => k.done).length}/{kids.length}
+              </span>
+            )}
+            {verb && (
+              <span className="item-verb" title={verb.key}>
+                <svg className="icon">
+                  <use href={`${icons}#icon-${verb.icon}`} />
+                </svg>
               </span>
             )}
           </span>

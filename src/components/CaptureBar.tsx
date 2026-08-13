@@ -16,7 +16,7 @@ const HINT_LABELS = {
 } as const;
 
 export default function CaptureBar() {
-  const { captureOpen, setCaptureOpen, categories, items, addItem, openItem } = useSeder();
+  const { captureOpen, captureDictate, setCaptureOpen, categories, items, addItem, openItem } = useSeder();
   const [lang, t] = useLang();
   // Resting state stays a three-word invitation; the #/! cheat-sheet lives in
   // the footer as keycap tokens, so strip the parenthetical from the dict string.
@@ -31,6 +31,12 @@ export default function CaptureBar() {
   useEffect(() => {
     if (new URLSearchParams(location.search).get('capture') === '1') setCaptureOpen(true);
   }, [setCaptureOpen]);
+
+  // Mobile mic button: open with dictation already running
+  useEffect(() => {
+    if (captureOpen && captureDictate && !listening) dictate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [captureOpen, captureDictate]);
 
   useEffect(() => {
     if (captureOpen) inputRef.current?.focus();
@@ -144,6 +150,19 @@ export default function CaptureBar() {
             }}
             {...dirProps(text || placeholder)}
           />
+          {/* Live parse result rides the input line itself: a small text-scale
+              token docked at the trailing edge, so it reads as "this line goes
+              to X" rather than as footer chrome. data-cat supplies
+              --cat-color/--cat-tint to the token and its dot. */}
+          {parsed.category && (
+            <span className="capture-dest-chip" data-cat={parsed.category.colorKey}>
+              <span className="cat-dot" />
+              <span className="capture-dest-name" {...dirProps(parsed.category.name)}>
+                {parsed.category.name}
+              </span>
+            </span>
+          )}
+          {parsed.today && <span className="capture-today-flag">{t('today_flag')}</span>}
           <button
             className={`capture-mic pressable ${listening ? 'listening' : ''}`}
             aria-label="Dictate"
@@ -184,19 +203,9 @@ export default function CaptureBar() {
           </div>
         )}
 
+        {/* Footer is now a single keycap family — syntax guidance at the start,
+            the commit key at the end. All live state lives up in the input line. */}
         <div className="capture-footer">
-          <div className="capture-dest">
-            {/* Live state gets a drawn container (category-tinted pill) so it
-                reads a clear step above the static keyboard hints. data-cat on
-                the chip supplies --cat-color/--cat-tint to itself and the dot. */}
-            <span className="capture-dest-chip" data-cat={parsed.category?.colorKey}>
-              <span className="cat-dot" />
-              <span className="capture-dest-name" {...dirProps(parsed.category?.name ?? '')}>
-                {parsed.category?.name}
-              </span>
-            </span>
-            {parsed.today && <span className="capture-today-flag">{t('today_flag')}</span>}
-          </div>
           <div className="capture-hints">
             <span
               className={`capture-hint capture-hint-syntax ${text ? 'is-quiet' : ''}`}
@@ -212,11 +221,11 @@ export default function CaptureBar() {
               <kbd className="capture-kbd">!</kbd>
               <span>{HINT_LABELS.today[lang]}</span>
             </span>
-            <span className="capture-hint">
-              <kbd className="capture-kbd">↵</kbd>
-              <span>{t('add_item')}</span>
-            </span>
           </div>
+          <span className="capture-hint">
+            <kbd className="capture-kbd">↵</kbd>
+            <span>{t('add_item')}</span>
+          </span>
         </div>
       </div>
     </div>

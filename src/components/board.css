@@ -8,47 +8,112 @@
   margin-inline: auto;
 }
 
-/* --- Pinned strip: one-line chips on the masonry's own columns.
+/* --- Pinned strip: a shelf, not a phantom grid row.
    A pin is a bookmark, not a second home: only the item's surface row
    shows here (its depth stays in the category card below, summarized
-   by the 0/n count). Chips take exact column widths, so a single pin
-   sits flush on the first column's edge with its label anchored to it
-   — occupied columns read as content, open ones as grid, not void. --- */
+   by the 0/n count). The strip borrows the cards' own header grammar —
+   glyph slot + semibold title + docked count — so it reads as a
+   sibling of the cards, and its chips are content-sized pills, so one
+   pin is one small object followed by deliberate whitespace, never a
+   half-empty column floating over a dead band. --- */
 .board-pinned {
-  /* same 20px gutter as the masonry, vertically and horizontally —
-     the strip is the grid's first row, not a separate band */
   margin-block-end: var(--space-5);
 }
+/* Header clone of .category-card-header, minus the card chrome:
+   16px inset + 5px glyph margin puts the ring's center on the same
+   25px line as the cat-dots and checkboxes in the column below. */
+.board-pinned-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-inline: var(--space-4);
+  margin-block-end: var(--space-2);
+}
+.board-pinned-glyph {
+  /* the app's one pin mark — same accent ring the source rows wear */
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-accent);
+  box-sizing: border-box;
+  flex-shrink: 0;
+  margin-inline: 5px;
+}
 .board-pinned-title {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--text-tertiary);
-  margin: 0 0 var(--space-2);
+  /* card-header type, verbatim: base size, semibold, tight tracking */
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
+  margin: 0;
+  flex: 0 1 auto;
+  min-width: 0;
   text-align: start;
 }
+.board-pinned-count {
+  /* same numeral voice + 8px satellite distance as card counts */
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  color: var(--text-tertiary);
+  margin-inline-start: calc(-1 * var(--space-1));
+  position: relative;
+  inset-block-start: 1px;
+}
 .board-pinned-items {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-  gap: var(--space-3) var(--space-5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
   align-items: start;
 }
-.board-pin-card {
+/* Chip: a content-sized pill. Its inner insets reproduce the cards'
+   (8px chip + 8px row = 16px), so a chip's checkbox sits on the same
+   vertical line as the checkboxes in the first column below it. */
+.board-pin-chip {
   background: var(--surface-card);
   border: var(--card-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-1) var(--space-1-5);
+  border-radius: var(--radius-full);
+  padding: var(--space-1) var(--space-2);
+  max-width: 100%;
+  min-width: 0;
+}
+.board-pin-chip:hover {
+  border-color: var(--border-color-strong);
+}
+.board-pin-chip .item-row {
+  min-height: 0;
+  padding-block: var(--space-1);
+  border-radius: var(--radius-full);
+}
+.board-pin-chip .item-row:hover {
+  background: transparent;
+}
+/* one line, always — long titles ellipse instead of bending the pill */
+.board-pin-chip .item-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 /* surface row only — nested rows belong to the category card */
-.board-pin-card .item-row:not(:first-child) {
+.board-pin-chip .item-row:not(:first-child) {
+  display: none;
+}
+/* everything on the shelf is pinned; the ring would say it twice */
+.board-pin-chip .item-pin {
   display: none;
 }
 
-/* --- Masonry: width-driven columns, one vertical rhythm --- */
+/* --- Masonry: width-driven columns, one vertical rhythm.
+   balance keeps content distributed across every column, so the
+   board fills the container evenly instead of hugging one edge. --- */
 .board-masonry {
   columns: 340px;
   column-gap: var(--space-5);
+  column-fill: balance;
 }
 .board-masonry > * {
   break-inside: avoid;

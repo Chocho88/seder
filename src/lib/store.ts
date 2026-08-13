@@ -26,6 +26,7 @@ interface SederState {
   detailMode: DetailMode;
   openItemId: string | null; // detail panel target
   captureOpen: boolean; // omni-bar (Cmd+K)
+  captureDictate: boolean; // open capture with dictation running (mobile mic)
 
   // --- lifecycle ---
   init(): Promise<void>;
@@ -48,7 +49,7 @@ interface SederState {
   setCardStyle(style: CardStyle): void;
   setDetailMode(mode: DetailMode): void;
   openItem(id: string | null): void;
-  setCaptureOpen(open: boolean): void;
+  setCaptureOpen(open: boolean, dictate?: boolean): void;
 }
 
 async function loadAll(): Promise<{ items: Item[]; categories: Category[] }> {
@@ -69,6 +70,7 @@ export const useSeder = create<SederState>((set, get) => ({
   detailMode: initialDetailMode(),
   openItemId: null,
   captureOpen: false,
+  captureDictate: false,
 
   async init() {
     await seedIfEmpty(wantsFreshSeed());
@@ -193,8 +195,8 @@ export const useSeder = create<SederState>((set, get) => ({
   openItem(id) {
     set({ openItemId: id });
   },
-  setCaptureOpen(open) {
-    set({ captureOpen: open });
+  setCaptureOpen(open, dictate = false) {
+    set({ captureOpen: open, captureDictate: open && dictate });
   },
 }));
 

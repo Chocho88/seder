@@ -4,9 +4,13 @@
    - two type levels, everywhere: title (14px, primary) and
      metadata (11px, tertiary, one numeric voice on the title's
      baseline). Nothing in between.
-   - checkbox, title and signals are ONE group: the cluster docks
-     8px off the title's edge; the row's far side is whitespace,
-     never a gutter the eye must cross.
+   - one start edge: a fixed-width flag slot sits between checkbox
+     and title on every row, full or empty, so titles never wander.
+     It holds at most ONE glyph; shape, not hue, is the vocabulary
+     (triangle = urgent, diamond = important, ring = pinned).
+   - checkbox, title and metadata are ONE group on an even 8px
+     rhythm; the row's far side is whitespace, never a gutter the
+     eye must cross.
    - nothing saturated at rest; color is a whisper
    - reveals (verb icon) happen on interaction only
    - the checkbox is drawn, not defaulted
@@ -15,7 +19,9 @@
 .item-row {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  /* one 8px beat between checkbox · flag slot · title · metadata —
+     the slot supplies the extra breath, the gaps stay even */
+  gap: var(--space-2);
   padding: var(--space-1-5) var(--space-2);
   min-height: 34px;
   border-radius: var(--radius-sm);
@@ -153,9 +159,46 @@
   text-align: end;
 }
 
-/* --- Signals: type level two — small, tertiary, earned.
-   The cluster is the title's satellite: the row's 12px gap is the
-   checkbox contract, so pull the cluster back to a tighter 8px.
+/* --- Flag slot: the one fixed-width gutter between checkbox and
+   title. Reserved on every row — full or empty — so all titles share
+   a single start edge; the glyph never floats, never crowds. --- */
+.item-flagslot {
+  width: 10px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.item-flag {
+  display: block;
+  flex-shrink: 0;
+}
+/* urgent — the one alarm shape: a small filled triangle */
+.item-flag-urgent {
+  width: 8px;
+  height: 7px;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  background: var(--color-warning);
+}
+/* important — a filled diamond, weight without noise */
+.item-flag-important {
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--text-secondary);
+  transform: rotate(45deg);
+}
+/* pinned — a hollow ring: held, not alarming */
+.item-flag-pinned {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-accent);
+  box-sizing: border-box;
+}
+
+/* --- Trailing metadata: type level two — small, tertiary, earned.
+   The cluster is the title's satellite, one 8px beat off its edge.
    Everything after it is open whitespace, on purpose. --- */
 .item-signals {
   display: inline-flex;
@@ -163,18 +206,6 @@
   gap: var(--space-2);
   flex-shrink: 0;
   color: var(--text-tertiary);
-  margin-inline-start: calc(-1 * var(--space-1));
-}
-
-/* the glyph run — fixed inside→out order (pin · count · urgent ·
-   important · verb) so a mark always means the same thing in the
-   same place, docked, with no reserved emptiness between title
-   and glyphs */
-.item-rail {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-shrink: 0;
 }
 
 /* who/what a wait item is stuck on — reads as a continuation of the title */
@@ -241,32 +272,4 @@
   width: 12px;
   height: 12px;
   display: block;
-}
-
-/* flag vocabulary: one 6px optical box — dot = urgent, rotated
-   square = important, ring = pinned */
-.flag-urgent {
-  width: 6px;
-  height: 6px;
-  border-radius: var(--radius-full);
-  background: var(--color-warning);
-  display: inline-block;
-  flex-shrink: 0;
-}
-.flag-important {
-  width: 6px;
-  height: 6px;
-  border-radius: 1.5px;
-  background: var(--text-tertiary);
-  transform: rotate(45deg) scale(0.85);
-  display: inline-block;
-  flex-shrink: 0;
-}
-.item-pin {
-  width: 7px;
-  height: 7px;
-  border-radius: var(--radius-full);
-  border: 1.5px solid var(--color-accent);
-  box-sizing: border-box;
-  flex-shrink: 0;
 }

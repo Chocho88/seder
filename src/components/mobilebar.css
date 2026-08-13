@@ -1,0 +1,52 @@
+/* Bottom capture bar — mobile only, floats above the scroll, safe-area aware. */
+
+.mobile-bar {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-bar {
+    position: fixed;
+    inset-inline: var(--space-4);
+    bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+    z-index: var(--z-sticky);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .mobile-bar-add {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 48px;
+    padding-inline: var(--space-4);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-full);
+    background: var(--surface-card);
+    box-shadow: var(--shadow-lg);
+    color: var(--text-tertiary);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    text-align: start;
+  }
+  .mobile-bar-add .icon {
+    color: var(--text-secondary);
+  }
+
+  .mobile-bar-mic {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: var(--radius-full);
+    background: var(--color-accent);
+    color: var(--color-white);
+    box-shadow: var(--shadow-lg);
+    cursor: pointer;
+  }
+}

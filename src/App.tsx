@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import icons from '../../design-system/icons.svg';
 import { useSeder } from './lib/store';
 import { useLang, toggleLang, t } from './lib/i18n';
@@ -9,7 +9,21 @@ import AllView from './components/AllView';
 import DetailPanel from './components/DetailPanel';
 import CaptureBar from './components/CaptureBar';
 import StyleSwitcher from './components/StyleSwitcher';
+import MobileBar from './components/MobileBar';
 import type { ViewId } from './lib/types';
+
+// One clean scrollable column on phones: lists on top, matrix below (the
+// user's whiteboard sketch). Desktop keeps the view switcher.
+const mq = typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)') : null;
+function useIsMobile(): boolean {
+  return useSyncExternalStore(
+    (cb) => {
+      mq?.addEventListener('change', cb);
+      return () => mq?.removeEventListener('change', cb);
+    },
+    () => mq?.matches ?? false,
+  );
+}
 
 const VIEWS: { id: ViewId; key: string }[] = [
   { id: 'today', key: 'view_today' },
@@ -21,6 +35,7 @@ const VIEWS: { id: ViewId; key: string }[] = [
 export default function App() {
   const { ready, init, view, setView, openItemId, setCaptureOpen } = useSeder();
   const [lang] = useLang();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     void init();
@@ -81,11 +96,30 @@ export default function App() {
       </header>
 
       <main className="seder-main">
-        {!ready ? null : view === 'today' ? <TodayView /> : view === 'board' ? <Board /> : view === 'matrix' ? <MatrixView scope="all" /> : <AllView />}
+        {!ready ? null : isMobile ? (
+          <>
+            <section className="mobile-section">
+              <Board />
+            </section>
+            <section className="mobile-section">
+              <h2 className="mobile-section-label">{t('view_today')}</h2>
+              <MatrixView scope="today" />
+            </section>
+          </>
+        ) : view === 'today' ? (
+          <TodayView />
+        ) : view === 'board' ? (
+          <Board />
+        ) : view === 'matrix' ? (
+          <MatrixView scope="all" />
+        ) : (
+          <AllView />
+        )}
       </main>
 
       {openItemId && <DetailPanel key={openItemId} itemId={openItemId} />}
       <CaptureBar />
+      {isMobile && <MobileBar />}
     </div>
   );
 }

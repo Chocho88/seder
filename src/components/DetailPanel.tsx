@@ -3,8 +3,10 @@
 //
 // Craft notes (Things-level bar):
 // - One field language: every field is a borderless row on a single text
-//   column, separated by consistent inset hairlines. Nothing is drawn as a
-//   box; nothing out-shouts the title.
+//   column. Blocks (next-move / notes / checklist) are grouped by whitespace
+//   — about 1.75x the checklist's own rhythm — with no rules inside the
+//   reading column; the footer's fence is the panel's only hairline.
+//   Nothing is drawn as a box; nothing out-shouts the title.
 // - One mark gutter: the title's done-check, the next-move state glyph, the
 //   sub-item checkboxes and the add-row plus all occupy the same 18px slot,
 //   so every line of text shares one inline-start edge.

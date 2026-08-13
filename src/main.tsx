@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import '../../design-system/presets/clean.css';
 import '../../design-system/index.css';
 import './styles/seder.css';
+import './styles/mobile.css';
 import App from './App';
 import { applyUrlOverrides } from './lib/urlState';
 
