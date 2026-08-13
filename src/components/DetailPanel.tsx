@@ -3,9 +3,9 @@
 //
 // Craft notes (Things-level bar):
 // - One field language: every field is a borderless row on a single text
-//   column. Blocks (next-move / notes / checklist) are grouped by whitespace
-//   — about 1.75x the checklist's own rhythm — with no rules inside the
-//   reading column; the footer's fence is the panel's only hairline.
+//   column. Blocks (next-move / notes / checklist) are grouped by whitespace;
+//   the checklist alone is bound by whisper-weight seams (Things rhythm),
+//   and the footer's full-ink fence is the panel's only strong line.
 //   Nothing is drawn as a box; nothing out-shouts the title.
 // - One mark gutter: the title's done-check, the next-move state glyph, the
 //   sub-item checkboxes and the add-row plus all occupy the same 18px slot,
@@ -65,7 +65,7 @@ export default function DetailPanel({ itemId }: { itemId: string }) {
                 aria-label={item.title}
                 onClick={() => void toggleDone(item.id)}
               >
-                {/* drawn check — same mark the board rows wear */}
+                {/* drawn check - same mark the board rows wear */}
                 <svg className="check-draw" viewBox="0 0 12 12" aria-hidden="true">
                   <path d="M2.5 6.5 L5 9 L9.5 3.5" />
                 </svg>
@@ -104,7 +104,7 @@ export default function DetailPanel({ itemId }: { itemId: string }) {
           </section>
 
           {/* Empty notes collapse to a single placeholder row (progressive
-              depth) — the field earns height only when content exists. */}
+              depth) - the field earns height only when content exists. */}
           <div className="detail-notes-row">
             <textarea
               className="detail-notes"

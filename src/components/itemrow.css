@@ -1,34 +1,41 @@
 /* ============================================
    ItemRow — the atom of the app.
+   ONE canonical row, every context: the cards, the matrix quadrants,
+   the tray, the pinned shelf and the done trail all draw this same box —
+   34px min-height, 18px checkbox, 12px checkbox-to-title. A context may
+   stand the row on a surface (a card's wash, a chip's tint) but never
+   re-skins it: no strokes, no second heights, no second checkbox.
+   Position and surface color carry the categorical meaning.
    Craft rules:
    - two type levels, everywhere: title (14px, primary) and
      metadata (11px, tertiary, one numeric voice on the title's
      baseline). Nothing in between.
-   - one start edge: a fixed-width flag slot sits between checkbox
-     and title on every row, full or empty, so titles never wander.
-     It holds at most ONE glyph; shape, not hue, is the vocabulary
-     (triangle = urgent, diamond = important, ring = pinned).
-   - checkbox, title and metadata are ONE group on an even 8px
-     rhythm; the row's far side is whitespace, never a gutter the
-     eye must cross.
+   - one start edge: checkbox-to-title is the same 12px interval
+     as dot-to-title in the card header, so every title in a card
+     stands on one 46px line — rows never wander off the header.
+   - checkbox, title and metadata are ONE group; the trailing
+     cluster docks 8px off the title's edge and the row's far
+     side is whitespace, never a gutter the eye must cross.
    - nothing saturated at rest; color is a whisper
-   - reveals (verb icon) happen on interaction only
+   - reveals (quick actions) happen on interaction only
    - the checkbox is drawn, not defaulted
    ============================================ */
 
 .item-row {
   display: flex;
   align-items: center;
-  /* one 8px beat between checkbox · flag slot · title · metadata —
-     the slot supplies the extra breath, the gaps stay even */
-  gap: var(--space-2);
+  /* the header contract: 12px from checkbox to title (the trailing
+     cluster pulls itself back to an 8px satellite distance) */
+  gap: var(--space-3);
   padding: var(--space-1-5) var(--space-2);
   min-height: 34px;
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
 .item-row:hover {
-  background: var(--surface-sunken);
+  /* a translucent ink veil, not an opaque gray bar — it must sit
+     on white cards and rich tint washes alike, in both themes */
+  background: color-mix(in srgb, var(--text-primary) 5%, transparent);
 }
 .item-row.item-open {
   background: var(--color-accent-subtle);
@@ -158,8 +165,11 @@
   text-align: end;
 }
 
-/* --- Rest signals: only the instantly legible — a pin icon and the
-   sub-count. Everything cryptic moved into the hover preview card. --- */
+/* --- Rest signals: only the instantly legible — a deadline flag,
+   a pin icon and the sub-count. Everything cryptic moved into the
+   hover preview card. The row's 12px gap is the checkbox contract;
+   the -4px pull tightens the cluster to the title's 8px satellite
+   distance so it reads as the title's companion, not a column. --- */
 .item-rest {
   display: inline-flex;
   align-items: center;
@@ -190,7 +200,10 @@
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--duration-fast) var(--ease-default);
-  background: var(--surface-sunken);
+  /* a clean card-surface pill with a soft lift — deliberate over
+     tinted washes, invisible-quiet over white */
+  background: var(--surface-card);
+  box-shadow: var(--shadow-sm);
   border-radius: var(--radius-sm);
   padding: 1px;
 }
@@ -215,7 +228,7 @@
   cursor: pointer;
 }
 .item-action:hover {
-  background: var(--surface-card);
+  background: var(--surface-sunken);
   color: var(--text-primary);
 }
 .item-action.on {
@@ -297,81 +310,19 @@
   white-space: pre-line;
 }
 
-/* --- Trailing metadata: type level two — small, tertiary, earned.
-   The cluster is the title's satellite, one 8px beat off its edge.
-   Everything after it is open whitespace, on purpose. --- */
-.item-signals {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-shrink: 0;
-  color: var(--text-tertiary);
-}
-
-/* who/what a wait item is stuck on — reads as a continuation of the title */
-.item-waiting {
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  max-width: 140px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* numerals: one family, one size, one color — locked onto the
-   title's baseline, not floated on the row centerline (14px/1.35
-   title vs 11px/1 numeral centers differ; the 1px drop closes the
-   optical gap). UI face: the data font has no Hebrew glyphs, so
-   the day mark would fall back mid-signal and read as an artifact. */
-.item-age,
+/* --- Sub-item progress: type level two — one numeral voice, locked
+   onto the title's baseline, not floated on the row centerline
+   (14px/1.35 title vs 11px/1 numeral centers differ; the 1px drop
+   closes the optical gap). --- */
 .item-kidcount {
   font-family: var(--font-ui);
   font-size: 11px;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
+  color: var(--text-tertiary);
   position: relative;
   inset-block-start: 1px;
-}
-
-/* rollover age — the one quiet alarm */
-.item-age {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 1.5px;
-  font-weight: var(--weight-medium);
-  color: var(--color-warning);
-}
-
-/* sub-item progress */
-.item-kidcount {
-  color: var(--text-tertiary);
-}
-
-/* verb chip icon — hidden at rest, revealed by the hand; it keeps a
-   reserved 12px slot at the cluster's outer end (facing whitespace)
-   so the docked glyphs never shift under the cursor */
-.item-verb {
-  display: inline-flex;
-  width: 12px;
-  justify-content: center;
-  color: var(--text-tertiary);
-  opacity: 0;
-  transition: opacity var(--duration-fast) var(--ease-default);
-}
-.item-row:hover .item-verb,
-.item-row.item-open .item-verb {
-  opacity: 1;
-}
-@media (hover: none) {
-  .item-verb {
-    opacity: 1;
-  }
-}
-.item-verb .icon {
-  width: 12px;
-  height: 12px;
-  display: block;
 }
 
 /* --- Deadline flag: quiet until it matters --- */

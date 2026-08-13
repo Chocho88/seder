@@ -78,27 +78,33 @@
   gap: var(--space-2) var(--space-3);
   align-items: start;
 }
-/* Chip: a content-sized pill. Its inner insets reproduce the cards'
-   (8px chip + 8px row = 16px), so a chip's checkbox sits on the same
-   vertical line as the checkboxes in the first column below it. */
+/* Chip: the one canonical row, standing on a small tinted surface.
+   A task is drawn the same way everywhere - same height, same checkbox,
+   same insets - so the chip adds no second control language: tint only,
+   no stroke; the wash says "this list" the way a card's wash does.
+   Inline inset 16px = the cards' own checkbox line (8px body + 8px row),
+   so a chip's checkbox sits on the same vertical rail as the first
+   column below it. */
 .board-pin-chip {
-  background: var(--surface-card);
-  border: var(--card-border);
-  border-radius: var(--radius-full);
-  padding: var(--space-1) var(--space-2);
   max-width: 100%;
   min-width: 0;
 }
-.board-pin-chip:hover {
-  border-color: var(--border-color-strong);
+.board-pin-chip .item-row.item-row {
+  --chip-veil: transparent;
+  padding-inline: var(--space-4);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(var(--chip-veil), var(--chip-veil)),
+    linear-gradient(var(--cat-tint, transparent), var(--cat-tint, transparent)),
+    var(--surface-card);
 }
-.board-pin-chip .item-row {
-  min-height: 0;
-  padding-block: var(--space-1);
-  border-radius: var(--radius-full);
+/* hover/open re-state the row's own veils on top of the wash (the base
+   rules would otherwise swap the wash out from under the chip) */
+.board-pin-chip .item-row.item-row:hover {
+  --chip-veil: color-mix(in srgb, var(--row-accent) 5%, transparent);
 }
-.board-pin-chip .item-row:hover {
-  background: transparent;
+.board-pin-chip .item-row.item-row.item-open {
+  --chip-veil: color-mix(in srgb, var(--row-accent) 10%, transparent);
 }
 /* one line, always — long titles ellipse instead of bending the pill */
 .board-pin-chip .item-title {
@@ -111,8 +117,8 @@
 .board-pin-chip .item-row:not(:first-child) {
   display: none;
 }
-/* everything on the shelf is pinned; the ring would say it twice */
-.board-pin-chip .item-pin {
+/* everything on the shelf is pinned; the pin would say it twice */
+.board-pin-chip .item-rest-pin {
   display: none;
 }
 
@@ -188,99 +194,6 @@
   }
 }
 
-/* ============================================
-   Row metadata, board scope — docked to the title.
-   The critic's law: title, state and checkbox are ONE
-   group. So the cluster is not a far-edge column across
-   a variable void — it sits directly after the title
-   text: one 8px gap to the title, 8px inside, fixed
-   order (count · urgent · important · verb-on-hover),
-   numerals dropped onto the title's baseline. The
-   card's inline-end stays open whitespace.
-   ============================================ */
-.board .item-title {
-  /* shrink-to-fit: the title owns only its own width so the
-     metadata can dock against it; long titles still ellipse
-     because the cluster refuses to shrink */
-  flex: 0 1 auto;
-}
-.board .item-signals {
-  gap: var(--space-2);
-  padding-inline-end: 0;
-  /* the row's 12px gap is the checkbox contract; pull the
-     cluster to a tighter 8px so it reads as the title's
-     satellite, not a fourth column */
-  margin-inline-start: calc(-1 * var(--space-1));
-}
-.board .item-rail {
-  /* flex, not the reserved 5-column grid: a docked cluster
-     keeps no empty slots between title and glyphs */
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.board .rail-slot {
-  display: none;
-  height: auto;
-}
-.board .rail-slot:has(.item-kidcount),
-.board .rail-slot:has(.flag-urgent),
-.board .rail-slot:has(.flag-important) {
-  display: inline-flex;
-}
-/* the hover verb keeps a reserved 12px slot at the cluster's
-   outer end — opacity reveal, zero layout shift for the
-   glyphs docked before it */
-.board .rail-slot:has(.item-verb) {
-  display: inline-flex;
-  order: 9;
-  width: 12px;
-}
-
-/* numerals: one family, one size, one color — and locked to
-   the title's baseline, not floated on the row centerline
-   (14px/1.35 title vs 11px/1 numeral centers differ; the 1px
-   drop closes the optical gap) */
-.board .item-age,
-.board .item-kidcount {
-  font-family: var(--font-ui);
-  font-size: 11px;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
-  color: var(--text-tertiary);
-  position: relative;
-  inset-block-start: 1px;
-}
-
-/* priority marks: one 6px optical box, no nested micro-gaps */
-.board .item-flags {
-  gap: var(--space-1-5);
-}
-.board .flag-urgent {
-  width: 6px;
-  height: 6px;
-}
-.board .flag-important {
-  width: 6px;
-  height: 6px;
-  border-radius: 1.5px;
-  transform: rotate(45deg) scale(0.85);
-  background: var(--text-tertiary);
-}
-
-/* pinned-ness already reads from the pinned strip; the ring
-   was a third glyph vocabulary — drop it from board rows */
-.board .item-pin {
-  display: none;
-}
-
-/* rollover age belongs to the Today ritual; on the board its
-   Hebrew unit (י) reads as a stray superscript — keep it off */
-.board .item-age {
-  display: none;
-}
-
 /* every title starts on the checkbox line, whatever its script:
    dirProps keeps per-line bidi ordering, match-parent aligns the
    block to the card's reading direction so LTR titles don't float
@@ -289,7 +202,12 @@
   text-align: match-parent;
 }
 
-/* --- New list: a quiet ghost, not a shout --- */
+/* --- New list: a quiet ghost, not a shout.
+   The board's ONE dashed outline - dashed means "not yet a thing"
+   and is reserved for this add affordance alone (every real vessel
+   draws the solid card frame). Same radius as the cards so the
+   ghost previews the card it becomes. Quiet at rest, firm under
+   the hand - the progression darkens, never fades. --- */
 .board-bento .board-add-category {
   grid-column: span 2;
   grid-row: span 6;
@@ -301,7 +219,7 @@
   justify-content: center;
   gap: var(--space-1-5);
   width: 100%;
-  border: 1px dashed var(--border-color-strong);
+  border: 1px dashed var(--text-tertiary);
   background: transparent;
   border-radius: var(--radius-lg);
   padding: var(--space-2-5, 0.625rem);
@@ -316,7 +234,7 @@
   height: 14px;
 }
 .board-add-category:hover {
-  color: var(--text-secondary);
-  border-color: var(--text-tertiary);
+  color: var(--text-primary);
+  border-color: var(--border-color-strong);
   background: var(--surface-sunken);
 }

@@ -19,6 +19,15 @@ export default function LogbookPanel() {
 
   useEffect(() => {
     if (!logbookOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLogbookOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [logbookOpen, setLogbookOpen]);
+
+  useEffect(() => {
+    if (!logbookOpen) return;
     setQ('');
     void db.items
       .filter((i) => i.archivedAt !== null)
@@ -48,7 +57,7 @@ export default function LogbookPanel() {
 
   return (
     <>
-      <div className="detail-scrim" onClick={() => setLogbookOpen(false)} />
+      <div className="logbook-scrim" onClick={() => setLogbookOpen(false)} />
       <aside className="logbook-panel">
         <header className="logbook-header">
           <svg className="icon icon-md" aria-hidden="true">
@@ -61,13 +70,18 @@ export default function LogbookPanel() {
             </svg>
           </button>
         </header>
-        <input
-          className="logbook-search"
-          placeholder={t('search_placeholder')}
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          {...dirProps(q || ' ')}
-        />
+        <div className="logbook-search-wrap">
+          <svg className="icon" aria-hidden="true">
+            <use href={`${icons}#icon-search`} />
+          </svg>
+          <input
+            className="logbook-search"
+            placeholder={t('search_placeholder')}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            {...(q ? dirProps(q) : {})}
+          />
+        </div>
         <div className="logbook-body">
           {groups.length === 0 && <p className="logbook-empty">{t('logbook_empty')}</p>}
           {groups.map(([day, rows]) => (

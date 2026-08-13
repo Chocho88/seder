@@ -164,24 +164,24 @@ export default function CaptureBar() {
             }}
             {...dirProps(text || placeholder)}
           />
-          {/* Live parse result rides the input line itself: a small text-scale
-              token docked at the trailing edge, so it reads as "this line goes
-              to X" rather than as footer chrome. data-cat supplies
-              --cat-color/--cat-tint to the token and its dot. */}
-          {parsed.category && (
-            <span className="capture-dest-chip" data-cat={parsed.category.colorKey}>
-              <span className="cat-dot" />
-              <span
-                className="capture-dest-name"
-                {...dirProps(parsed.category.system ? t('pool') : parsed.category.name)}
-              >
-                {parsed.category.system ? t('pool') : parsed.category.name}
-              </span>
+          {/* Destination is signaled exactly once - by the active chip in the
+              chooser row below (it mirrors #syntax parsing live). Only the
+              flags that have no other home ride the input line: today + due. */}
+          {parsed.today && (
+            <span className="capture-today-flag">
+              <svg className="icon" aria-hidden="true">
+                <use href={`${icons}#icon-star`} />
+              </svg>
+              {t('today_flag')}
             </span>
           )}
-          {parsed.today && <span className="capture-today-flag">{t('today_flag')}</span>}
           {parsed.due !== null && (
-            <span className="capture-today-flag capture-due-chip">{formatDue(parsed.due, lang)}</span>
+            <span className="capture-today-flag capture-due-chip">
+              <svg className="icon" aria-hidden="true">
+                <use href={`${icons}#icon-calendar`} />
+              </svg>
+              {formatDue(parsed.due, lang)}
+            </span>
           )}
           <button
             className={`capture-mic pressable ${listening ? 'listening' : ''}`}
@@ -246,7 +246,7 @@ export default function CaptureBar() {
           </div>
         )}
 
-        {/* Footer is now a single keycap family — syntax guidance at the start,
+        {/* Footer is now a single keycap family - syntax guidance at the start,
             the commit key at the end. All live state lives up in the input line. */}
         <div className="capture-footer">
           <div className="capture-hints">

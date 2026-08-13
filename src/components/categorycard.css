@@ -1,19 +1,44 @@
-/* Category card interior. Alignment contract:
+/* Category card interior.
+   One container grammar: every vessel on the board is THIS card -
+   one radius (radius-lg), one solid 1px ink frame (--card-border),
+   one interior header seam. The Pool is a list like any other and
+   wears the same spec; dashed outlines belong to exactly one thing,
+   the add-new affordance. Nothing else may invent an edge treatment.
+
+   Alignment contract:
    rows: 16px card inset + 18px checkbox + 12px gap → titles start at 46px,
-   checkbox centers at 25px. The header reproduces both lines exactly:
-   dot slot 5+8+5 = 18px (center 25px), gap 12px (title 46px), and the
-   count ends on the same 16px inline-end inset as the row metadata slot. */
+   checkbox centers at 25px (the row supplies 8px padding over the body's
+   8px, and .item-row's 12px gap matches the header's). The header
+   reproduces both lines exactly: dot slot 5+8+5 = 18px (center 25px),
+   gap 12px (title 46px), and the count ends on the same 16px inline-end
+   inset as the row metadata slot. */
 
 .category-card-header {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4) var(--space-2-5, 0.625rem);
-  border-block-end: 1px solid var(--border-color);
+  /* interior seam, one step quieter than the card's ink frame and
+     tinted by the list itself - precise, never a second black bar */
+  border-block-end: 1px solid color-mix(in srgb, var(--cat-color, var(--border-color)) 50%, transparent);
   cursor: grab;
 }
 .category-card-header:active {
   cursor: grabbing;
+}
+
+/* The Pool (system list) draws the same solid frame as every other
+   card - overriding the legacy dashed treatment in seder.css. Its
+   holding-space character is carried by its fog wash and its name,
+   not by a second border language. */
+.category-card.category-card[data-system] {
+  border-style: solid;
+}
+
+/* An empty list shows its add affordance at rest: the invitation is
+   the content, so an empty vessel never reads as a dead box. */
+.category-card-body > .category-card-add:first-child {
+  opacity: 1;
 }
 
 /* a card receiving a dragged item or card announces itself quietly,
@@ -107,7 +132,7 @@
 
 /* Breathing room between open and done rows */
 .category-card-donesep {
-  height: var(--space-1);
+  height: var(--space-2);
 }
 
 /* Inline add: invisible until wanted; text aligns with row titles */

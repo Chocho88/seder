@@ -1,5 +1,6 @@
-// The Eisenhower matrix, drawn like the whiteboard original: two hairline
-// axes forming a cross, classic axis labels in the margins, whitespace inside.
+// The Eisenhower matrix: ONE card - the canvas's shared card primitive -
+// subdivided internally by two full-bleed hairline axes, classic axis
+// labels in the margins, whitespace inside.
 //
 // The matrix MIRRORS the flags: the moment an item is marked urgent and/or
 // important - anywhere in the app - it appears here, placed by exactly what
@@ -15,8 +16,10 @@ import type { Item } from '../lib/types';
 import ItemRow from './ItemRow';
 import './matrix.css';
 
+// Section voice, Things-plain: name the shelf, skip the instruction -
+// the drag affordance shows itself the moment a row is in the air.
 const LOCAL = {
-  unplaced: { en: 'Today - drag into place', he: 'להיום - גררו למיקום' },
+  unplaced: { en: 'For today', he: 'להיום' },
 } as const;
 
 type Quadrant = { urgent: boolean; important: boolean };
@@ -57,6 +60,11 @@ export default function MatrixView() {
       <span className="matrix-label matrix-label-x matrix-x2">{t('not_urgent')}</span>
       <span className="matrix-label matrix-label-y matrix-y1">{t('important')}</span>
       <span className="matrix-label matrix-label-y matrix-y2">{t('not_important')}</span>
+
+      {/* the card frame, painted first; fields and seams live inside it */}
+      <span className="matrix-card" aria-hidden />
+      <span className="matrix-axis-v" aria-hidden />
+      <span className="matrix-axis-h" aria-hidden />
 
       {QUADRANTS.map((q) => {
         const key = qKey(q);
@@ -100,9 +108,6 @@ export default function MatrixView() {
           </div>
         );
       })}
-
-      <span className="matrix-axis-v" aria-hidden />
-      <span className="matrix-axis-h" aria-hidden />
 
       {(todayUnflagged.length > 0 || dragItemId !== null) && (
         <div

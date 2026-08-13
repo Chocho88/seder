@@ -1,45 +1,109 @@
 /* ============================================
-   Detail panel — the item, unfolded.
-   One field language: borderless rows on a single text column,
-   grouped by whitespace alone — no rules inside the reading
-   column. One mark gutter (18px + gap) keeps every line of
-   text on the same start edge.
+   Detail panel - the item, unfolded.
+   One field language: borderless rows on a single text column.
+   Two line voices, Things-style: whisper seams bind the
+   checklist's rhythm; the footer's full-ink fence is the only
+   strong line. One mark gutter (18px + gap) keeps every line
+   of text on the same start edge.
    ============================================ */
 
+/* The scrim earns the panel its own plane: a real ink veil that settles
+   the whole board one step back (still legible - the geography stays
+   readable through it, but nothing behind competes as "surface"). This is
+   what lets the card overlap the board without reading as a card slicing
+   its neighbors in-plane. */
 .detail-scrim {
   position: fixed;
   inset: 0;
   z-index: var(--z-overlay);
-  background: transparent;
+  background: rgba(18, 22, 19, 0.3);
+  animation: detail-scrim-in var(--duration-normal) var(--ease-out) both;
+}
+[data-theme='dark'] .detail-scrim {
+  background: rgba(0, 0, 0, 0.55);
+}
+@keyframes detail-scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .detail-scrim {
+    animation: none;
+  }
 }
 
 /* Floating card, not a wall: the board stays visible around it.
-   The card hugs its content — exactly as deep as the item is (progressive
+   The card hugs its content - exactly as deep as the item is (progressive
    depth), growing and then scrolling only when the item earns it. */
 .detail-panel {
   position: fixed;
-  inset-block-start: var(--space-3);
-  inset-inline-end: var(--space-3);
-  max-block-size: calc(100dvh - 2 * var(--space-3));
+  /* A floating window keeps a real margin from the viewport edge - never
+     flush with the corner, never crowding the chrome above the board. */
+  inset-block-start: var(--space-6);
+  inset-inline-end: var(--space-6);
+  max-block-size: calc(100dvh - 2 * var(--space-6));
   width: var(--detail-panel-width);
-  max-width: calc(100vw - var(--space-6));
+  max-width: calc(100vw - 2 * var(--space-6));
   z-index: var(--z-modal);
   display: flex;
   flex-direction: column;
   background: var(--surface-card);
-  border: var(--card-border);
-  border-radius: var(--radius-lg);
+  /* One surface grammar: board cards are flat, ink-bordered planes; the
+     open item is the single ELEVATED surface, so it carries no ink border
+     at all - elevation alone (scrim + shadow) says "above", the way the
+     Things expanded card floats borderless over the dimmed list. */
+  border: none;
+  border-radius: var(--radius-xl);
+  /* Real elevation, drawn by hand (Clean's --shadow-xl whispers at .05 -
+     too faint to lift a card off a full-contrast board). A hairline-soft
+     contact ring keeps the edge crisp where white meets the veiled board,
+     then a body shadow and a wide ambient wash, Things-soft. */
   box-shadow:
-    var(--shadow-xl),
-    0 1px 2px rgba(0, 0, 0, 0.04);
+    0 0 0 1px rgba(18, 22, 19, 0.06),
+    0 2px 6px rgba(0, 0, 0, 0.08),
+    0 12px 32px rgba(0, 0, 0, 0.14),
+    0 32px 72px rgba(0, 0, 0, 0.14);
   overflow: hidden;
   /* the shared mark gutter: an 18px mark + the row gap */
   --detail-gutter: calc(18px + var(--space-3));
-  /* one hairline in the whole panel: the footer's edge */
+  /* the title's done-check lives outside any .item-row, so the row accent
+     (list color -> checked fill, colored-lists border mix) arrives here
+     from the panel's own data-cat */
+  --row-accent: var(--cat-color, var(--color-accent));
+  /* two line voices: the footer's fence speaks in full ink (Seder soul);
+     the checklist's seams whisper - same ink, mostly air (Things rhythm) */
   --detail-hairline: 1px solid var(--border-color);
-  /* blocks separate by air, not ink — roughly 1.75x the
+  --detail-seam: 1px solid color-mix(in srgb, var(--border-color) 22%, transparent);
+  /* blocks separate by air, not ink - roughly 1.75x the
      intra-list rhythm once row paddings are added in */
   --detail-block-gap: var(--space-3);
+  /* arrives with its scrim: one breath, a 4px settle - the shadow reads
+     as the card landing on its new plane */
+  animation: detail-panel-in var(--duration-normal) var(--ease-out) both;
+}
+@keyframes detail-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .detail-panel {
+    animation: none;
+  }
+}
+[data-theme='dark'] .detail-panel {
+  --detail-seam: 1px solid color-mix(in srgb, var(--border-color) 55%, transparent);
+  /* Dark elevation: the fill lifts half a step off the veiled board (dark
+     ground says "closer" with lightness, not shadow), a light inner ring
+     draws the crisp edge shadows can't, and the shadows speak louder. */
+  background: color-mix(in srgb, var(--surface-card) 88%, var(--color-neutral-700));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.45),
+    0 12px 32px rgba(0, 0, 0, 0.5),
+    0 32px 72px rgba(0, 0, 0, 0.45);
 }
 
 @media (max-width: 768px) {
@@ -97,7 +161,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-2) var(--space-6) var(--space-4);
+  padding: var(--space-2) var(--space-6) var(--space-5);
 }
 
 /* --- Title row: done-check in the gutter, large seamless text --- */
@@ -122,7 +186,9 @@
   margin: 0;
   font-family: var(--font-heading);
   font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
+  /* Things carries its title on size alone (regular weight); medium keeps
+     a breath of Seder ink without shouting over the reading column */
+  font-weight: var(--weight-medium);
   letter-spacing: var(--tracking-tight);
   line-height: var(--leading-snug);
   color: var(--text-primary);
@@ -138,7 +204,7 @@
 
 /* Opposite-direction content keeps the column edge (same contract as the
    board rows): an LTR title in the RTL panel still hugs its mark. Per-line
-   direction itself comes from dirProps() — never removed. */
+   direction itself comes from dirProps() - never removed. */
 .detail-panel:dir(rtl) .detail-title[dir='ltr'],
 .detail-panel:dir(ltr) .detail-title[dir='rtl'],
 .detail-panel:dir(rtl) .detail-move-input[dir='ltr'],
@@ -171,7 +237,7 @@
   text-align: start;
 }
 
-/* State glyph: drawn, not defaulted — same 18px slot as the checkboxes.
+/* State glyph: drawn, not defaulted - same 18px slot as the checkboxes.
    do = open emerald ring (actionable) · wait = pause bars · shape = dashed ring */
 .detail-move-glyph {
   position: relative;
@@ -203,7 +269,7 @@
   inset-inline-end: 4.5px;
 }
 
-/* Derived state, spoken quietly at the row's end — the glyph carries the
+/* Derived state, spoken quietly at the row's end - the glyph carries the
    color; the word stays in tertiary ink so it never competes with content. */
 .detail-move-state {
   flex-shrink: 0;
@@ -215,7 +281,7 @@
   color: var(--text-secondary);
 }
 
-/* "Waiting for X" — aligned to the shared text column */
+/* "Waiting for X" - aligned to the shared text column */
 .detail-waiting {
   margin: 0;
   margin-block-start: calc(-1 * var(--space-1));
@@ -234,7 +300,8 @@
    Empty = a single placeholder row, same voice and gray as the add-item row
    below; the field earns its height only once content exists. */
 .detail-notes-row {
-  margin-block-start: var(--detail-block-gap);
+  /* no extra block gap: the row's own padding keeps notes on the same
+     patient beat as title -> move, so the column reads as one rhythm */
   padding-block: var(--space-3);
   padding-inline-start: var(--detail-gutter);
   min-height: 44px;
@@ -260,7 +327,7 @@
   text-align: start;
 }
 
-/* Hover firms up the quiet invitations — affordance without chrome.
+/* Hover firms up the quiet invitations - affordance without chrome.
    Notes, next-move and the add-row speak with one voice. */
 .detail-notes::placeholder,
 .detail-move-input::placeholder,
@@ -273,7 +340,7 @@
   color: var(--text-secondary);
 }
 
-/* Text fields carry no ring of their own — the caret is the focus cue.
+/* Text fields carry no ring of their own - the caret is the focus cue.
    Buttons keep the base ring. */
 .detail-title:focus-visible,
 .detail-notes:focus-visible,
@@ -291,24 +358,28 @@
   opacity: 1;
 }
 
-/* --- Sub-items: a quiet checklist on the same column ---
-   No rules between rows — the tight row rhythm binds the list,
-   and the wider block gap above sets it apart. */
+/* --- Sub-items: the checklist, bound by whisper seams ---
+   Things rhythm: a 1px seam above every row (so the list opens with a
+   line and the add-row's seam closes it), rows on a patient ~44px beat.
+   The seams are the ink at 1/5 strength - rules that organize without
+   competing with the footer's full-ink fence. */
 .detail-subitems {
   margin-block-start: var(--detail-block-gap);
 }
 .detail-subitems .item-row {
   border-radius: 0;
+  border-block-start: var(--detail-seam);
   padding: var(--space-2) 0;
-  min-height: 40px;
+  min-height: 44px;
 }
 
 .detail-subitem-addrow {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  border-block-start: var(--detail-seam);
   padding: var(--space-2) 0;
-  min-height: 40px;
+  min-height: 44px;
 }
 .detail-subitem-plus {
   width: 18px;
@@ -350,41 +421,30 @@
   padding-block: var(--space-3);
   border-block-start: var(--detail-hairline);
 }
-/* Toggles are crisp hairline pills — clickable at a glance, quiet in ink.
-   A set property fills into a soft chip that speaks the app's row-flag
-   vocabulary (dot = urgent, diamond = important, ring = pinned); only
-   "today" earns the accent, borrowed exactly from the capture bar's
-   today-chip. Green lives here at most once, and only because the user
-   put it there. */
+/* Toggles speak Things in the footer: bare icons, no chrome at rest -
+   tertiary ink that firms under the hand. A set property settles into a
+   soft sunken chip with primary ink; only "today" earns the accent, so
+   green lives here at most once, and only because the user put it there. */
 .detail-toggles {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: var(--space-1-5);
+  gap: var(--space-1);
   flex-wrap: wrap;
 }
 .detail-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1-5);
-  border: 1px solid var(--border-color);
+  border: none;
   background: transparent;
-  border-radius: var(--radius-full);
-  padding: var(--space-1) var(--space-2);
-  font-family: var(--font-ui);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  line-height: 1.2;
-  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  padding: 0;
+  color: var(--text-tertiary);
   cursor: pointer;
   transition:
     transform var(--duration-fast) var(--ease-default),
     background var(--duration-fast) var(--ease-default),
-    color var(--duration-fast) var(--ease-default),
-    border-color var(--duration-fast) var(--ease-default);
+    color var(--duration-fast) var(--ease-default);
 }
 .detail-toggle:hover {
-  border-color: var(--border-color-strong);
   background: var(--surface-sunken);
   color: var(--text-primary);
 }
@@ -393,49 +453,17 @@
 .detail-toggle.on,
 .detail-toggle.on:hover {
   background: var(--surface-sunken);
-  border-color: var(--border-color-strong);
   color: var(--text-primary);
 }
 /* …except today, the one accent allowed in the footer. */
 .detail-toggle--today.on,
 .detail-toggle--today.on:hover {
   background: var(--color-accent-subtle);
-  border-color: var(--color-accent-muted);
   color: var(--color-accent-dark);
 }
 [data-theme='dark'] .detail-toggle--today.on,
 [data-theme='dark'] .detail-toggle--today.on:hover {
   color: var(--color-accent);
-}
-
-/* Set chips carry their row-flag glyph — same mark the board rows wear */
-.detail-toggle.on::before {
-  content: '';
-  flex-shrink: 0;
-}
-.detail-toggle--urgent.on::before {
-  width: 6px;
-  height: 6px;
-  border-radius: var(--radius-full);
-  background: var(--color-warning);
-}
-.detail-toggle--important.on::before {
-  width: 5px;
-  height: 5px;
-  border-radius: 1px;
-  background: var(--text-secondary);
-  transform: rotate(45deg);
-}
-.detail-toggle--pin.on::before {
-  width: 7px;
-  height: 7px;
-  border-radius: var(--radius-full);
-  border: 1.5px solid var(--color-accent);
-  box-sizing: border-box;
-}
-/* today's chip is its own mark — no glyph */
-.detail-toggle--today.on::before {
-  content: none;
 }
 
 .detail-delete {
@@ -466,6 +494,6 @@
   place-items: center;
 }
 .detail-toggles .detail-toggle .icon {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
 }

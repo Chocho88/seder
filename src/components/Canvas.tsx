@@ -26,6 +26,7 @@ export default function Canvas() {
     const v = Number(localStorage.getItem(ROWMIN_KEY));
     return v > 0 ? v : null;
   });
+  const [eveningOver, setEveningOver] = useState(false);
   const suggestions = suggestionsOn ? morningCandidates(items).slice(0, 4) : [];
   const doneToday = items.filter((i) => i.done);
   const eveningItems = items.filter((i) => i.evening && i.today && !i.done);
@@ -90,6 +91,7 @@ export default function Canvas() {
               </svg>
               {t('suggestions')}
             </h3>
+            <div className="canvas-card-body">
             {suggestions.map((i) => (
               <div key={i.id} className="canvas-suggestion">
                 <span className="canvas-suggestion-title" {...dirProps(i.title)}>
@@ -117,6 +119,7 @@ export default function Canvas() {
                 </button>
               </div>
             ))}
+            </div>
           </div>
         )}
 
@@ -135,10 +138,17 @@ export default function Canvas() {
             drop target while dragging, so tonight is one gesture away. */}
         {(eveningItems.length > 0 || dragItemId !== null) && (
           <div
-            className="canvas-evening"
+            className={`canvas-evening${dragItemId ? ' drag-target' : ''}${eveningOver ? ' drag-over' : ''}`}
             data-drop="evening"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => void dropOn('evening')}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setEveningOver(true);
+            }}
+            onDragLeave={() => setEveningOver(false)}
+            onDrop={() => {
+              void dropOn('evening');
+              setEveningOver(false);
+            }}
           >
             <h3 className="canvas-section-label">
               <svg className="icon" aria-hidden="true">
@@ -146,9 +156,11 @@ export default function Canvas() {
               </svg>
               {t('evening')}
             </h3>
-            {eveningItems.map((i) => (
-              <ItemRow key={i.id} item={i} leaf />
-            ))}
+            <div className="canvas-card-body">
+              {eveningItems.map((i) => (
+                <ItemRow key={i.id} item={i} leaf />
+              ))}
+            </div>
           </div>
         )}
 
@@ -171,9 +183,11 @@ export default function Canvas() {
                 </svg>
               </button>
             </h3>
-            {doneToday.map((i) => (
-              <ItemRow key={i.id} item={i} leaf />
-            ))}
+            <div className="canvas-card-body">
+              {doneToday.map((i) => (
+                <ItemRow key={i.id} item={i} leaf />
+              ))}
+            </div>
           </div>
         )}
       </section>

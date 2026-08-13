@@ -120,7 +120,9 @@ export default function CategoryCard({ category }: { category: Category }) {
           onKeyDown={(e) => {
             if (e.key === 'Enter') void submit();
           }}
-          {...dirProps(adding || ' ')}
+          // empty input inherits the UI direction so the placeholder stands
+          // on the rows' start edge; typed content re-detects per-line
+          {...(adding.trim() ? dirProps(adding) : {})}
         />
       </div>
     </section>

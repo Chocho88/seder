@@ -1,14 +1,19 @@
-/* The matrix drawn as a whiteboard cross, not a cage of boxes:
-   two hairline axes spanning the full matrix bounds, classic labels in the
-   margins, deliberate quiet inside. The grid claims a fixed near-equal-
-   quadrant footprint: each row holds a viewport-tied minimum height, so a
-   vacant quadrant is calm room with its rest-label centered in real space —
-   never a squashed band, never a premature end to the page. */
+/* The matrix is ONE card - the same primitive as every shelf on the
+   canvas (card surface, ink frame, --radius-lg) - subdivided internally
+   by two full-bleed hairline axes: the vertical axis runs from the card's
+   top edge down to the tray seam, the horizontal axis runs frame to frame.
+   Classic axis labels sit in the margins on one consistent gap, and the
+   "For today" tray docks inside the card as its bottom band behind one
+   more full-width seam. No second container language: empty room is just
+   the card's own quiet interior. */
 
 .matrix {
-  /* two equal rows sized to land the cross's bounds deep in the viewport:
-     100vh minus the chrome above the grid and the tray below it, halved.
-     Clamped so short windows stay usable and tall ones don't gape. */
+  /* interior seam: one step quieter than the card's ink frame -
+     the same law as the list cards' tinted header rules (50% color) */
+  --seam-in: color-mix(in srgb, var(--border-color) 50%, transparent);
+  /* two equal rows sized to land the card's lower edge deep in the
+     viewport: 100vh minus the chrome above the grid and the tray below
+     it, halved. Clamped so short windows stay usable, tall ones don't gape. */
   --matrix-row-min: clamp(200px, calc((100vh - 380px) / 2), 440px);
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr) minmax(0, 1fr);
@@ -18,12 +23,8 @@
     minmax(var(--matrix-row-min), auto)
     auto;
 }
-.matrix[data-scope='all'] {
-  max-width: 1080px;
-  margin-inline: auto;
-}
 
-/* --- axis labels --- */
+/* --- axis labels: one consistent 12px margin off the card's frame --- */
 .matrix-label {
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
@@ -46,7 +47,7 @@
 .matrix-label-y {
   grid-column: 1;
   align-self: center;
-  padding-inline-end: var(--space-5);
+  padding-inline-end: var(--space-3);
   text-align: end;
 }
 .matrix-y1 {
@@ -54,6 +55,27 @@
 }
 .matrix-y2 {
   grid-row: 3;
+}
+
+/* --- the card: one frame around the whole instrument --- */
+.matrix-card {
+  grid-area: 2 / 2 / 5 / 4;
+  background: var(--surface-card);
+  border: var(--card-border);
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+}
+
+/* --- the axes: interior seams drawn full bleed, frame to frame --- */
+.matrix-axis-v {
+  grid-area: 2 / 3 / 4 / 4;
+  border-inline-start: 1px solid var(--seam-in);
+  pointer-events: none;
+}
+.matrix-axis-h {
+  grid-area: 3 / 2 / 4 / 4;
+  border-block-start: 1px solid var(--seam-in);
+  pointer-events: none;
 }
 
 /* --- one rail, surface rows only ---
@@ -67,20 +89,26 @@
   display: none;
 }
 
-/* --- quadrants --- */
+/* --- quadrants: interior fields of the card. The 8px inset over the
+   rows' own 8px lands every checkbox on the same 16px rail as the list
+   cards' bodies. Corner fields round with the frame so drop washes
+   never poke past it. --- */
 .matrix-quadrant {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  transition: background var(--duration-fast) var(--ease-default);
+  padding: var(--space-2);
+  transition:
+    background var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
 }
 .mq-u-i {
   grid-area: 2 / 2;
+  border-start-start-radius: var(--radius-lg);
 }
 .mq-nu-i {
   grid-area: 2 / 3;
+  border-start-end-radius: var(--radius-lg);
 }
 .mq-u-ni {
   grid-area: 3 / 2;
@@ -88,64 +116,34 @@
 .mq-nu-ni {
   grid-area: 3 / 3;
 }
-
-/* a vacant quadrant holds its rest-label at the true center of its field:
-   one whisper-gray word anchoring the room the quadrant keeps, so emptiness
-   reads as deliberate rest rather than a collapsed render */
-.matrix-quadrant-empty {
-  align-self: center;
-  margin-block: auto;
-  line-height: 34px; /* = .item-row min-height */
-  font-size: var(--text-xs);
-  font-weight: var(--weight-regular);
-  color: var(--text-tertiary);
-  opacity: 0.75;
-  user-select: none;
-  pointer-events: none;
+/* no tray band: the lower fields carry the frame's bottom corners */
+.matrix:not(:has(.matrix-unplaced)) .mq-u-ni {
+  border-end-start-radius: var(--radius-lg);
+}
+.matrix:not(:has(.matrix-unplaced)) .mq-nu-ni {
+  border-end-end-radius: var(--radius-lg);
 }
 
-/* --- the cross: hairlines drawn edge to edge of the matrix bounds --- */
-.matrix-axis-v {
-  grid-area: 2 / 3 / 4 / 4;
-  border-inline-start: 1px solid var(--border-color);
-  pointer-events: none;
-}
-.matrix-axis-h {
-  grid-area: 3 / 2 / 4 / 4;
-  border-block-start: 1px solid var(--border-color);
-  pointer-events: none;
-}
-
-/* --- drop targets appear only while a card is in the air: the grid already
-   holds full-size fields, so each quadrant just declares itself droppable --- */
-.matrix-dragging .matrix-quadrant {
-  outline: 1.5px dashed var(--border-color-strong);
-  outline-offset: -5px;
-}
+/* --- drop feedback: the card already draws its four fields, so a drag
+   needs no extra geometry - the field under the pointer simply fills,
+   solid and quiet. No dashed ghosts anywhere. --- */
 .matrix-dragging .matrix-quadrant.drag-over {
-  outline-color: var(--color-accent);
   background: var(--color-accent-subtle);
-}
-.matrix-dragging .matrix-quadrant-empty {
-  opacity: 0.45;
+  box-shadow: inset 0 0 0 1.5px var(--color-accent);
 }
 
-/* --- unplaced tray: a labeled holding strip docked under the cross --- */
+/* --- the tray: today-without-flags, the card's bottom band. Same
+   surface, one full-width seam, its own small caption - a shelf inside
+   the instrument, not a second kind of box. --- */
 .matrix-unplaced {
   grid-area: 4 / 2 / 5 / 4;
-  margin-block-start: var(--space-3);
-  /* inline inset = quadrant padding minus the 1px border, so tray rows'
-     checkboxes land on the exact same rail as the quadrant rows above */
-  padding: var(--space-2) calc(var(--space-4) - 1px) var(--space-1-5);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--surface-sunken);
+  border-block-start: 1px solid var(--seam-in);
+  border-end-start-radius: var(--radius-lg);
+  border-end-end-radius: var(--radius-lg);
+  padding: var(--space-1-5) var(--space-2) var(--space-2);
   transition:
     background var(--duration-fast) var(--ease-default),
-    border-color var(--duration-fast) var(--ease-default);
-}
-[data-theme='dark'] .matrix-unplaced {
-  background: var(--surface-card);
+    box-shadow var(--duration-fast) var(--ease-default);
 }
 .matrix-unplaced-label {
   display: block;
@@ -155,11 +153,11 @@
   letter-spacing: var(--tracking-caps);
   color: var(--text-tertiary);
   user-select: none;
-  padding: var(--space-1) var(--space-2) var(--space-1-5);
+  padding: var(--space-1) var(--space-2) var(--space-1);
 }
 .matrix-unplaced.drag-over {
-  border-color: var(--color-accent);
   background: var(--color-accent-subtle);
+  box-shadow: inset 0 0 0 1.5px var(--color-accent);
 }
 
 /* --- in-quadrant visual ordering: the insertion line --- */
@@ -177,14 +175,14 @@
   pointer-events: none;
 }
 
-/* --- Matrix rows as boxed chips, each wearing its list's color --- */
-.matrix .item-row {
-  background: linear-gradient(var(--cat-tint, transparent), var(--cat-tint, transparent)), var(--surface-card);
-  border: 1px solid color-mix(in srgb, var(--cat-color, var(--border-color)) 55%, var(--border-color));
-  border-radius: var(--radius-md);
-  margin-block-end: var(--space-1-5);
-  padding-block: var(--space-1-5);
+/* --- Matrix rows are plain rows: checkbox + label + line-height (Things).
+   Thirty items must read as a list, not thirty buttons - fill and outline
+   are reserved for drag states. The list's color survives in the one
+   circle the row already draws: the checkbox ring. --- */
+.matrix .item-check {
+  border-color: color-mix(in srgb, var(--row-accent) 65%, var(--border-color));
 }
-.matrix .item-row:hover {
-  border-color: var(--cat-color, var(--border-color-strong));
+.matrix .item-note-mark::before {
+  border-color: color-mix(in srgb, var(--row-accent) 70%, var(--text-tertiary));
+  opacity: 1;
 }

@@ -7,6 +7,10 @@
    physically (ltr) so the draggable split math stays simple; each side
    restores the page's reading direction inside itself. */
 .canvas {
+  /* interior seam: one step quieter than the card frames - the same law
+     as the list cards' tinted header rules (50% color). The ink stays
+     reserved for the frames themselves, so the cards read as the heroes */
+  --seam-in: color-mix(in srgb, var(--border-color) 50%, transparent);
   direction: ltr;
   display: grid;
   grid-template-columns: clamp(360px, var(--split, 42%), 65%) 14px minmax(0, 1fr);
@@ -52,7 +56,8 @@
   width: 44px;
   height: 3px;
   border-radius: 2px;
-  background: var(--border-color);
+  /* seam weight at rest - a whisper of a handle; ink is for frames */
+  background: color-mix(in srgb, var(--border-color) 30%, transparent);
   transition: background var(--duration-fast) var(--ease-default);
 }
 .canvas-matrix-lip:hover::after,
@@ -75,52 +80,73 @@
   gap: var(--space-2-5, 0.625rem);
 }
 .canvas-date-dot {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
   border-radius: var(--radius-full);
   background: var(--color-accent);
   flex-shrink: 0;
 }
 .canvas-date-label {
-  font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
   letter-spacing: var(--tracking-tight);
   margin: 0;
   text-align: start;
 }
 
-/* --- shared quiet section label --- */
+/* --- ONE card primitive for every shelf on the matrix side: the exact
+   spec the list cards use (card surface, ink frame, --radius-lg), so the
+   whole canvas speaks a single container language. --- */
+.canvas-suggestions,
+.canvas-evening,
+.canvas-done {
+  background: var(--surface-card);
+  border: var(--card-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* --- and ONE header band: icon in an 18px slot + semibold ink title over
+   an interior seam - the same band geometry as the list card headers, so
+   card titles and row titles share one 46px rail. No fake caps (they do
+   nothing for Hebrew). The green icon is the one accent. --- */
 .canvas-section-label {
   display: flex;
   align-items: center;
-  gap: var(--space-1-5);
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
-  color: var(--text-tertiary);
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-3) var(--space-4) var(--space-2-5, 0.625rem);
+  border-block-end: 1px solid var(--seam-in, var(--border-color));
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-primary);
   text-align: start;
 }
 .canvas-section-label .icon {
-  width: 12px;
-  height: 12px;
+  width: 16px;
+  height: 16px;
+  margin-inline: 1px;
+  flex-shrink: 0;
+  color: var(--color-accent);
 }
 
-/* --- suggestions: compact rows, icon actions --- */
-.canvas-suggestions {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: var(--space-3) var(--space-4);
+/* card interior: same inset as the list card bodies (8px + the rows'
+   own 8px = the shared 16px rail) */
+.canvas-card-body {
+  padding: var(--space-2) var(--space-2) var(--space-2-5, 0.625rem);
 }
+
+/* --- suggestions: the morning shelf; rows are just text with two quiet
+   actions, no internal rules --- */
 .canvas-suggestion {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-1-5) 0;
-}
-.canvas-suggestion + .canvas-suggestion {
-  border-block-start: 1px solid var(--border-color);
+  padding: var(--space-1-5) var(--space-2);
+  /* no checkbox here, so the title borrows the rows' 18px slot + 12px gap
+     and lands on the same 46px rail as every other title in the stack */
+  padding-inline-start: calc(var(--space-2) + 18px + var(--space-3));
 }
 .canvas-suggestion-title {
   flex: 1;
@@ -164,18 +190,20 @@
   }
 }
 
-/* --- This Evening shelf --- */
+/* --- This Evening shelf: the same card, quietly ready to catch a drop.
+   Drop feedback is solid and calm - the frame warms toward the accent,
+   the interior fills - the same voice as the list cards' drag-over. --- */
 .canvas-evening {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: var(--space-3) var(--space-4);
   transition:
-    border-color var(--duration-fast) var(--ease-default),
-    background var(--duration-fast) var(--ease-default);
+    background var(--duration-fast) var(--ease-default),
+    border-color var(--duration-fast) var(--ease-default);
+}
+.canvas-evening.drag-target {
+  border-color: color-mix(in srgb, var(--color-accent) 55%, var(--border-color));
 }
 .canvas-evening.drag-over {
   border-color: var(--color-accent);
-  background: var(--color-accent-subtle);
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--surface-card));
 }
 
 /* logbook entry: rides the date line, always reachable */
