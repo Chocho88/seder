@@ -1,6 +1,10 @@
 // The atom of the whole app: one item as a light row.
-// Surface = checkbox + title + docked signal cluster. Depth lives in the DetailPanel.
+// Surface = checkbox + title, nothing else at rest. Depth reveals on hover:
+// a preview card (next move, notes, age) and quick icon actions. Every row
+// is draggable — into matrix quadrants, other lists, or the pinned shelf.
 
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import icons from '../../../design-system/icons.svg';
 import { useSeder, childrenOf, todayAgeDays } from '../lib/store';
 import { itemState, itemVerb, itemWaitingFor } from '../lib/nextMove';
@@ -9,35 +13,47 @@ import { t } from '../lib/i18n';
 import type { Item } from '../lib/types';
 import './itemrow.css';
 
-export default function ItemRow({ item, depth = 0 }: { item: Item; depth?: number }) {
-  const { items, toggleDone, openItem, openItemId } = useSeder();
+const HOVER_DELAY = 380;
+
+export default function ItemRow({ item, depth = 0, leaf = false }: { item: Item; depth?: number; leaf?: boolean }) {
+  const { items, toggleDone, openItem, openItemId, setDragItem, dragItemId, setToday, togglePinned } = useSeder();
   const state = itemState(item);
-  const verb = itemVerb(item);
-  const waitingFor = itemWaitingFor(item);
   const kids = childrenOf(items, item.id);
-  const age = item.today ? todayAgeDays(item) : 0;
+  const rowRef = useRef<HTMLDivElement>(null);
+  const timer = useRef<number | null>(null);
+  const [preview, setPreview] = useState<{ x: number; y: number; end: boolean } | null>(null);
 
-  // One flag, one slot. A fixed-width gutter sits between checkbox and
-  // title on EVERY row, so all titles share a single start edge. It holds
-  // at most one glyph, and shape — not hue — carries the meaning:
-  // triangle = urgent, diamond = important, ring = pinned. When states
-  // stack, the loudest wins the slot; the detail panel holds the rest.
-  const flag = item.urgent ? 'urgent' : item.important ? 'important' : item.pinned ? 'pinned' : null;
-  const flagLabel = [
-    item.urgent && t('urgent'),
-    item.important && t('important'),
-    item.pinned && t('pinned'),
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const clearTimer = () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+  };
 
-  // Trailing metadata renders only when earned — it docks against the
-  // title's edge, so an empty cluster must not leave a phantom gap.
-  const hasSignals = Boolean(waitingFor) || age >= 2 || kids.length > 0 || Boolean(verb);
+  const armPreview = () => {
+    if (dragItemId) return;
+    clearTimer();
+    timer.current = window.setTimeout(() => {
+      const rect = rowRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const rtl = document.documentElement.dir === 'rtl';
+      setPreview({
+        x: rtl ? rect.right : rect.left,
+        y: Math.min(rect.bottom + 6, window.innerHeight - 200),
+        end: rtl,
+      });
+    }, HOVER_DELAY);
+  };
+
+  const disarmPreview = () => {
+    clearTimer();
+    setPreview(null);
+  };
+
+  useEffect(() => clearTimer, []);
 
   return (
     <>
       <div
+        ref={rowRef}
         className={[
           'item-row',
           'pressable',
@@ -48,7 +64,19 @@ export default function ItemRow({ item, depth = 0 }: { item: Item; depth?: numbe
           .filter(Boolean)
           .join(' ')}
         style={depth ? { paddingInlineStart: `calc(var(--space-4) + ${depth} * var(--space-5))` } : undefined}
-        onClick={() => openItem(item.id)}
+        draggable
+        onDragStart={(e) => {
+          disarmPreview();
+          e.stopPropagation();
+          setDragItem(item.id);
+        }}
+        onDragEnd={() => setDragItem(null)}
+        onClick={() => {
+          disarmPreview();
+          openItem(item.id);
+        }}
+        onMouseEnter={armPreview}
+        onMouseLeave={disarmPreview}
       >
         {item.kind === 'task' ? (
           <button
@@ -61,7 +89,6 @@ export default function ItemRow({ item, depth = 0 }: { item: Item; depth?: numbe
               void toggleDone(item.id);
             }}
           >
-            {/* drawn check — the path draws itself in on toggle */}
             <svg className="check-draw" viewBox="0 0 12 12" aria-hidden="true">
               <path d="M2.5 6.5 L5 9 L9.5 3.5" />
             </svg>
@@ -70,53 +97,113 @@ export default function ItemRow({ item, depth = 0 }: { item: Item; depth?: numbe
           <span className="item-note-mark" aria-hidden />
         )}
 
-        {/* the flag slot: fixed width whether full or empty — this is
-            what keeps every title on the same start edge */}
-        <span className="item-flagslot" aria-hidden={!flag}>
-          {flag && <span className={`item-flag item-flag-${flag}`} title={flagLabel} />}
-        </span>
-
         <span className="item-title" {...dirProps(item.title)}>
           {item.title}
         </span>
 
-        {/* Trailing metadata docks one gap unit off the title's edge —
-            checkbox, title and text marks read as ONE group; the row's
-            inline-end stays deliberate whitespace. Fixed inside→out
-            order: waiting · age · count · verb (hover-revealed, holding
-            a reserved slot at the outer end so nothing shifts under the
-            hand). */}
-        {hasSignals && (
-          <span className="item-signals">
-            {waitingFor && (
-              <span className="item-waiting" {...dirProps(waitingFor)} title={`${t('waiting_for')} ${waitingFor}`}>
-                {waitingFor}
-              </span>
-            )}
-            {age >= 2 && (
-              <span className="item-age">
-                <span>{age}</span>
-                <span>{t('days_short')}</span>
-              </span>
-            )}
-            {kids.length > 0 && (
-              <span className="item-kidcount">
-                {kids.filter((k) => k.done).length}/{kids.length}
-              </span>
-            )}
-            {verb && (
-              <span className="item-verb" title={verb.key}>
-                <svg className="icon">
-                  <use href={`${icons}#icon-${verb.icon}`} />
-                </svg>
-              </span>
-            )}
+        {/* rest signals: only what's instantly legible — a pin, sub-count */}
+        <span className="item-rest">
+          {item.pinned && (
+            <svg className="icon item-rest-pin" aria-hidden="true">
+              <use href={`${icons}#icon-pin`} />
+            </svg>
+          )}
+          {kids.length > 0 && (
+            <span className="item-kidcount">
+              {kids.filter((k) => k.done).length}/{kids.length}
+            </span>
+          )}
+        </span>
+
+        {/* hover actions: icons only, tooltips carry the words */}
+        <span className="item-actions" onMouseEnter={disarmPreview}>
+          <button
+            className={`item-action tooltip ${item.today ? 'on' : ''}`}
+            data-tooltip={t('today_flag')}
+            aria-label={t('today_flag')}
+            onClick={(e) => {
+              e.stopPropagation();
+              void setToday(item.id, !item.today);
+            }}
+          >
+            <svg className="icon">
+              <use href={`${icons}#icon-calendar`} />
+            </svg>
+          </button>
+          <button
+            className={`item-action tooltip ${item.pinned ? 'on' : ''}`}
+            data-tooltip={item.pinned ? t('unpin') : t('pin')}
+            aria-label={t('pin')}
+            onClick={(e) => {
+              e.stopPropagation();
+              void togglePinned(item.id);
+            }}
+          >
+            <svg className="icon">
+              <use href={`${icons}#icon-pin`} />
+            </svg>
+          </button>
+        </span>
+      </div>
+
+      {preview && <HoverCard item={item} x={preview.x} y={preview.y} end={preview.end} />}
+
+      {!leaf &&
+        kids.map((k) => (
+          <ItemRow key={k.id} item={k} depth={depth + 1} />
+        ))}
+    </>
+  );
+}
+
+/** The depth-at-a-glance preview: state, next move, notes, age — read-only. */
+function HoverCard({ item, x, y, end }: { item: Item; x: number; y: number; end: boolean }) {
+  const state = itemState(item);
+  const verb = itemVerb(item);
+  const waitingFor = itemWaitingFor(item);
+  const age = item.today ? todayAgeDays(item) : 0;
+  const hasBody = Boolean(item.nextMove.trim() || item.notes.trim() || waitingFor || age >= 2 || verb);
+  if (!hasBody) return null;
+
+  return createPortal(
+    <div
+      className="hovercard"
+      dir={document.documentElement.dir}
+      style={end ? { right: window.innerWidth - x, top: y } : { left: x, top: y }}
+    >
+      <div className="hovercard-state" data-state={state}>
+        {verb && (
+          <svg className="icon" aria-hidden="true">
+            <use href={`${icons}#icon-${verb.icon}`} />
+          </svg>
+        )}
+        <span>{t(`state_${state}`)}</span>
+        {age >= 2 && (
+          <span className="hovercard-age">
+            <svg className="icon" aria-hidden="true">
+              <use href={`${icons}#icon-clock`} />
+            </svg>
+            {age}
+            {t('days_short')}
           </span>
         )}
       </div>
-      {kids.map((k) => (
-        <ItemRow key={k.id} item={k} depth={depth + 1} />
-      ))}
-    </>
+      {item.nextMove.trim() && (
+        <p className="hovercard-move" {...dirProps(item.nextMove)}>
+          {item.nextMove}
+        </p>
+      )}
+      {waitingFor && !item.nextMove.trim() && (
+        <p className="hovercard-move" {...dirProps(waitingFor)}>
+          {t('waiting_for')} {waitingFor}
+        </p>
+      )}
+      {item.notes.trim() && (
+        <p className="hovercard-notes" {...dirProps(item.notes)}>
+          {item.notes}
+        </p>
+      )}
+    </div>,
+    document.body,
   );
 }

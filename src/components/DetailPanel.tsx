@@ -144,34 +144,51 @@ export default function DetailPanel({ itemId }: { itemId: string }) {
         </div>
 
         <footer className="detail-footer">
+          {/* icons carry the actions; tooltips carry the words */}
           <div className="detail-toggles">
             <button
-              className={`detail-toggle detail-toggle--today pressable ${item.today ? 'on' : ''}`}
+              className={`detail-toggle detail-toggle--today pressable tooltip ${item.today ? 'on' : ''}`}
               aria-pressed={!!item.today}
+              data-tooltip={t('today_flag')}
+              aria-label={t('today_flag')}
               onClick={() => void setToday(item.id, !item.today)}
             >
-              {t('today_flag')}
+              <svg className="icon icon-sm">
+                <use href={`${icons}#icon-calendar`} />
+              </svg>
             </button>
             <button
-              className={`detail-toggle detail-toggle--urgent pressable ${item.urgent ? 'on' : ''}`}
+              className={`detail-toggle detail-toggle--urgent pressable tooltip ${item.urgent ? 'on' : ''}`}
               aria-pressed={!!item.urgent}
+              data-tooltip={t('urgent')}
+              aria-label={t('urgent')}
               onClick={() => void updateItem(item.id, { urgent: item.urgent ? null : true })}
             >
-              {t('urgent')}
+              <svg className="icon icon-sm">
+                <use href={`${icons}#icon-bolt`} />
+              </svg>
             </button>
             <button
-              className={`detail-toggle detail-toggle--important pressable ${item.important ? 'on' : ''}`}
+              className={`detail-toggle detail-toggle--important pressable tooltip ${item.important ? 'on' : ''}`}
               aria-pressed={!!item.important}
+              data-tooltip={t('important')}
+              aria-label={t('important')}
               onClick={() => void updateItem(item.id, { important: item.important ? null : true })}
             >
-              {t('important')}
+              <svg className="icon icon-sm">
+                <use href={`${icons}#icon-star`} />
+              </svg>
             </button>
             <button
-              className={`detail-toggle detail-toggle--pin pressable ${item.pinned ? 'on' : ''}`}
+              className={`detail-toggle detail-toggle--pin pressable tooltip ${item.pinned ? 'on' : ''}`}
               aria-pressed={!!item.pinned}
+              data-tooltip={item.pinned ? t('unpin') : t('pin')}
+              aria-label={t('pin')}
               onClick={() => void togglePinned(item.id)}
             >
-              {t('pin')}
+              <svg className="icon icon-sm">
+                <use href={`${icons}#icon-pin`} />
+              </svg>
             </button>
           </div>
           <button className="detail-delete pressable" aria-label={t('delete')} onClick={() => void deleteItem(item.id)}>

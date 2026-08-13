@@ -15,13 +15,13 @@
   --font-ui: 'Rubik', -apple-system, sans-serif;
   --font-wordmark: 'Migdal Haemeq', 'Noto Sans Hebrew', sans-serif;
 
-  /* Emerald accent */
-  --color-accent: #10b77f;
-  --color-accent-hover: #0ea371;
-  --color-accent-dark: #0c8f63;
-  --color-accent-light: #e7f7f1;
-  --color-accent-subtle: rgba(16, 183, 127, 0.07);
-  --color-accent-muted: rgba(16, 183, 127, 0.16);
+  /* The user's green — rgb(50,144,81), calm forest, never neon */
+  --color-accent: #329051;
+  --color-accent-hover: #2b7f47;
+  --color-accent-dark: #256e3e;
+  --color-accent-light: #e9f2ec;
+  --color-accent-subtle: rgba(50, 144, 81, 0.08);
+  --color-accent-muted: rgba(50, 144, 81, 0.18);
 
   /* Category palette — dusty, desaturated, never dominant.
      Each key: solid (dot/edge), tint (card wash), text (readable on tint) */
@@ -52,9 +52,11 @@
 }
 
 [data-theme='dark'] {
-  --color-accent-light: #123b2e;
-  --color-accent-subtle: rgba(16, 183, 127, 0.1);
-  --color-accent-muted: rgba(16, 183, 127, 0.22);
+  /* same green, lifted one step so it carries on near-black */
+  --color-accent: #3da266;
+  --color-accent-light: #1a3325;
+  --color-accent-subtle: rgba(61, 162, 102, 0.13);
+  --color-accent-muted: rgba(61, 162, 102, 0.26);
   --cat-sage-tint: rgba(124, 152, 133, 0.12);
   --cat-clay-tint: rgba(189, 132, 103, 0.12);
   --cat-rose-tint: rgba(185, 134, 149, 0.12);

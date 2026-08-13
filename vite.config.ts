@@ -6,6 +6,8 @@ export default defineConfig({
   server: {
     port: 5183,
     strictPort: true,
+    host: true, // expose on LAN so the iPhone can reach it over Wi-Fi
+
     fs: {
       // design system lives one level up, shared across KLOD apps
       allow: ['..'],

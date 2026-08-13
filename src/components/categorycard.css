@@ -10,6 +10,16 @@
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4) var(--space-2-5, 0.625rem);
   border-block-end: 1px solid var(--border-color);
+  cursor: grab;
+}
+.category-card-header:active {
+  cursor: grabbing;
+}
+
+/* a card receiving a dragged item or card announces itself quietly */
+.category-card.drag-over {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
 }
 .category-card-header .cat-dot {
   /* 8px dot centered in an 18px slot = aligned with checkbox centers below */

@@ -7,14 +7,34 @@ import ItemRow from './ItemRow';
 import CategoryCard from './CategoryCard';
 import './board.css';
 
+import { useState } from 'react';
+
 export default function Board() {
-  const { items, categories, addCategory } = useSeder();
+  const { items, categories, addCategory, dragItemId, setDragItem, updateItem } = useSeder();
   const pinned = items.filter((i) => i.pinned && !i.done);
+  const [pinOver, setPinOver] = useState(false);
+  const dragUnpinned = dragItemId !== null && !items.find((i) => i.id === dragItemId)?.pinned;
 
   return (
     <div className="board">
-      {pinned.length > 0 && (
-        <section className="board-pinned">
+      {(pinned.length > 0 || dragUnpinned) && (
+        <section
+          className={`board-pinned${pinOver ? ' drag-over' : ''}`}
+          onDragOver={(e) => {
+            if (dragUnpinned) {
+              e.preventDefault();
+              setPinOver(true);
+            }
+          }}
+          onDragLeave={() => setPinOver(false)}
+          onDrop={() => {
+            setPinOver(false);
+            if (dragUnpinned && dragItemId) {
+              void updateItem(dragItemId, { pinned: true });
+              setDragItem(null);
+            }
+          }}
+        >
           {/* Same header anatomy as the cards below: glyph slot + title +
               docked count. The glyph is the app's one pin mark (accent
               ring) — the same ring the source rows carry in their cards. */}

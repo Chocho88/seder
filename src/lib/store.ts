@@ -28,6 +28,12 @@ interface SederState {
   captureOpen: boolean; // omni-bar (Cmd+K)
   captureDictate: boolean; // open capture with dictation running (mobile mic)
 
+  // One holistic drag layer: any row can be picked up anywhere and dropped
+  // on a quadrant (sets flags), a category card (moves it), or the pinned
+  // shelf (pins it). Cards themselves drag to reorder.
+  dragItemId: string | null;
+  dragCategoryId: string | null;
+
   // --- lifecycle ---
   init(): Promise<void>;
 
@@ -50,6 +56,10 @@ interface SederState {
   setDetailMode(mode: DetailMode): void;
   openItem(id: string | null): void;
   setCaptureOpen(open: boolean, dictate?: boolean): void;
+  setDragItem(id: string | null): void;
+  setDragCategory(id: string | null): void;
+  moveItemToCategory(id: string, categoryId: string): Promise<void>;
+  reorderCategory(dragId: string, targetId: string): Promise<void>;
 }
 
 async function loadAll(): Promise<{ items: Item[]; categories: Category[] }> {
@@ -71,6 +81,8 @@ export const useSeder = create<SederState>((set, get) => ({
   openItemId: null,
   captureOpen: false,
   captureDictate: false,
+  dragItemId: null,
+  dragCategoryId: null,
 
   async init() {
     await seedIfEmpty(wantsFreshSeed());
@@ -197,6 +209,54 @@ export const useSeder = create<SederState>((set, get) => ({
   },
   setCaptureOpen(open, dictate = false) {
     set({ captureOpen: open, captureDictate: open && dictate });
+  },
+
+  setDragItem(id) {
+    set({ dragItemId: id });
+  },
+  setDragCategory(id) {
+    set({ dragCategoryId: id });
+  },
+
+  async moveItemToCategory(id, categoryId) {
+    const all = get().items;
+    const it = all.find((i) => i.id === id);
+    if (!it || it.categoryId === categoryId) return;
+    // the item becomes a top-level row of its new list; descendants follow
+    const family = [id];
+    const collect = (pid: string) => {
+      for (const c of all.filter((i) => i.parentId === pid)) {
+        family.push(c.id);
+        collect(c.id);
+      }
+    };
+    collect(id);
+    const siblings = all.filter((i) => i.categoryId === categoryId && i.parentId === null);
+    const now = Date.now();
+    await db.items.where('id').anyOf(family).modify({ categoryId, updatedAt: now });
+    await db.items.update(id, { parentId: null, order: siblings.length });
+    set({
+      items: all.map((i) =>
+        family.includes(i.id)
+          ? { ...i, categoryId, updatedAt: now, ...(i.id === id ? { parentId: null, order: siblings.length } : {}) }
+          : i,
+      ),
+    });
+  },
+
+  async reorderCategory(dragId, targetId) {
+    if (dragId === targetId) return;
+    const cats = [...get().categories];
+    const from = cats.findIndex((c) => c.id === dragId);
+    const to = cats.findIndex((c) => c.id === targetId);
+    if (from < 0 || to < 0) return;
+    const [moved] = cats.splice(from, 1);
+    cats.splice(to, 0, moved);
+    const reordered = cats.map((c, idx) => ({ ...c, order: idx }));
+    await db.transaction('rw', db.categories, async () => {
+      for (const c of reordered) await db.categories.update(c.id, { order: c.order });
+    });
+    set({ categories: reordered });
   },
 }));
 

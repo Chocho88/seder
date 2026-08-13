@@ -2,18 +2,16 @@ import { useEffect, useSyncExternalStore } from 'react';
 import icons from '../../design-system/icons.svg';
 import { useSeder } from './lib/store';
 import { useLang, toggleLang, t } from './lib/i18n';
+import Canvas from './components/Canvas';
 import Board from './components/Board';
-import TodayView from './components/TodayView';
 import MatrixView from './components/MatrixView';
-import AllView from './components/AllView';
 import DetailPanel from './components/DetailPanel';
 import CaptureBar from './components/CaptureBar';
 import StyleSwitcher from './components/StyleSwitcher';
 import MobileBar from './components/MobileBar';
-import type { ViewId } from './lib/types';
 
 // One clean scrollable column on phones: lists on top, matrix below (the
-// user's whiteboard sketch). Desktop keeps the view switcher.
+// user's whiteboard sketch). Desktop is the holistic canvas — no tabs.
 const mq = typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)') : null;
 function useIsMobile(): boolean {
   return useSyncExternalStore(
@@ -25,15 +23,8 @@ function useIsMobile(): boolean {
   );
 }
 
-const VIEWS: { id: ViewId; key: string }[] = [
-  { id: 'today', key: 'view_today' },
-  { id: 'board', key: 'view_board' },
-  { id: 'matrix', key: 'view_matrix' },
-  { id: 'all', key: 'view_all' },
-];
-
 export default function App() {
-  const { ready, init, view, setView, openItemId, setCaptureOpen } = useSeder();
+  const { ready, init, openItemId, setCaptureOpen } = useSeder();
   const [lang] = useLang();
   const isMobile = useIsMobile();
 
@@ -41,34 +32,22 @@ export default function App() {
     void init();
   }, [init]);
 
-  // Global shortcuts: Cmd+K capture, 1-4 views
+  // Global shortcut: Cmd+K capture
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setCaptureOpen(true);
       }
-      if (!e.metaKey && !e.ctrlKey && !e.altKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-        const idx = ['1', '2', '3', '4'].indexOf(e.key);
-        if (idx >= 0) setView(VIEWS[idx].id);
-      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [setCaptureOpen, setView]);
+  }, [setCaptureOpen]);
 
   return (
     <div className="seder-shell">
       <header className="app-header">
-        <div className="app-header-left">
-          <nav className="view-switcher" aria-label="Views">
-            {VIEWS.map((v) => (
-              <button key={v.id} aria-current={view === v.id} onClick={() => setView(v.id)}>
-                {t(v.key)}
-              </button>
-            ))}
-          </nav>
-        </div>
+        <div className="app-header-left" />
         <div className="app-header-center">
           {/* The wordmark is always the Hebrew brand, in Migdal Haemeq */}
           <span className="app-logo-text">סדר</span>
@@ -103,17 +82,11 @@ export default function App() {
             </section>
             <section className="mobile-section">
               <h2 className="mobile-section-label">{t('view_today')}</h2>
-              <MatrixView scope="today" />
+              <MatrixView />
             </section>
           </>
-        ) : view === 'today' ? (
-          <TodayView />
-        ) : view === 'board' ? (
-          <Board />
-        ) : view === 'matrix' ? (
-          <MatrixView scope="all" />
         ) : (
-          <AllView />
+          <Canvas />
         )}
       </main>
 

@@ -18,6 +18,15 @@
    half-empty column floating over a dead band. --- */
 .board-pinned {
   margin-block-end: var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background var(--duration-fast) var(--ease-default);
+}
+.board-pinned.drag-over {
+  border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
 }
 /* Header clone of .category-card-header, minus the card chrome:
    16px inset + 5px glyph margin puts the ring's center on the same

@@ -456,3 +456,16 @@
   background: var(--surface-sunken);
   color: var(--color-error);
 }
+
+/* Icon-only toggles: the words moved into tooltips */
+.detail-toggles .detail-toggle {
+  width: 34px;
+  height: 30px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+.detail-toggles .detail-toggle .icon {
+  width: 15px;
+  height: 15px;
+}

@@ -1,4 +1,6 @@
 // One category as a card: title row + item rows + quiet inline add.
+// The card is a living object: drag its header to reorder cards; drop any
+// item row onto it to move that item (and its sub-items) into this list.
 
 import { useState } from 'react';
 import { useSeder, topLevelOf } from '../lib/store';
@@ -9,11 +11,23 @@ import ItemRow from './ItemRow';
 import './categorycard.css';
 
 export default function CategoryCard({ category }: { category: Category }) {
-  const { items, addItem } = useSeder();
+  const {
+    items,
+    addItem,
+    dragItemId,
+    dragCategoryId,
+    setDragCategory,
+    setDragItem,
+    moveItemToCategory,
+    reorderCategory,
+  } = useSeder();
   const [adding, setAdding] = useState('');
+  const [over, setOver] = useState(false);
   const top = topLevelOf(items, category.id);
   const open = top.filter((i) => !i.done);
   const done = top.filter((i) => i.done);
+
+  const dragForeign = dragItemId !== null && items.find((i) => i.id === dragItemId)?.categoryId !== category.id;
 
   const submit = async () => {
     const title = adding.trim();
@@ -23,8 +37,36 @@ export default function CategoryCard({ category }: { category: Category }) {
   };
 
   return (
-    <section className="category-card" data-cat={category.colorKey}>
-      <header className="category-card-header">
+    <section
+      className={`category-card${over ? ' drag-over' : ''}`}
+      data-cat={category.colorKey}
+      onDragOver={(e) => {
+        if (dragForeign || (dragCategoryId && dragCategoryId !== category.id)) {
+          e.preventDefault();
+          setOver(true);
+        }
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={() => {
+        setOver(false);
+        if (dragForeign && dragItemId) {
+          void moveItemToCategory(dragItemId, category.id);
+          setDragItem(null);
+        } else if (dragCategoryId && dragCategoryId !== category.id) {
+          void reorderCategory(dragCategoryId, category.id);
+          setDragCategory(null);
+        }
+      }}
+    >
+      <header
+        className="category-card-header"
+        draggable
+        onDragStart={(e) => {
+          e.stopPropagation();
+          setDragCategory(category.id);
+        }}
+        onDragEnd={() => setDragCategory(null)}
+      >
         <span className="cat-dot" />
         <h2 className="category-card-title" {...dirProps(category.name)}>
           {category.name}

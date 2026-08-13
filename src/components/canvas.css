@@ -1,0 +1,121 @@
+/* The holistic canvas: matrix side + lists side, one composition.
+   DOM order is lists-direction-aware: in RTL the lists take the
+   inline-start (right, like the whiteboard) and the matrix sits left. */
+
+.canvas {
+  display: grid;
+  grid-template-columns: minmax(420px, 5fr) minmax(520px, 7fr);
+  gap: var(--space-10);
+  align-items: start;
+}
+/* the whiteboard's geography holds in both languages: matrix on the
+   physical LEFT, lists on the physical RIGHT. RTL grids lay track 1 on
+   the right — so in RTL the lists take track 1 (which must then carry
+   the wide fraction) and the matrix moves to track 2. */
+[dir='rtl'] .canvas {
+  grid-template-columns: minmax(520px, 7fr) minmax(420px, 5fr);
+}
+[dir='rtl'] .canvas .canvas-side {
+  order: 2;
+}
+
+.canvas-side {
+  position: sticky;
+  top: calc(var(--header-height) + var(--space-6));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* --- date header --- */
+.canvas-date {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5, 0.625rem);
+}
+.canvas-date-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  flex-shrink: 0;
+}
+.canvas-date-label {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  margin: 0;
+  text-align: start;
+}
+
+/* --- shared quiet section label --- */
+.canvas-section-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-tertiary);
+  text-align: start;
+}
+.canvas-section-label .icon {
+  width: 12px;
+  height: 12px;
+}
+
+/* --- suggestions: compact rows, icon actions --- */
+.canvas-suggestions {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+}
+.canvas-suggestion {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1-5) 0;
+}
+.canvas-suggestion + .canvas-suggestion {
+  border-block-start: 1px solid var(--border-color);
+}
+.canvas-suggestion-title {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: start;
+}
+/* suggestion actions are always visible (no row-hover context here) */
+.canvas-suggestion .item-action {
+  opacity: 1;
+  pointer-events: auto;
+  position: static;
+  transform: none;
+}
+
+/* --- done trail --- */
+.canvas-done .canvas-sweep {
+  margin-inline-start: auto;
+}
+.canvas-done-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent-dark);
+}
+[data-theme='dark'] .canvas-done-count {
+  color: var(--color-accent);
+}
+
+/* narrow desktop: the canvas stacks (phone has its own layout) */
+@media (max-width: 1100px) and (min-width: 769px) {
+  .canvas {
+    grid-template-columns: 1fr;
+  }
+  .canvas-side {
+    position: static;
+  }
+}
