@@ -1,0 +1,6 @@
+node_modules/
+dist/
+references/things-presskit.zip
+references/presskit
+references/*.html
+shots/

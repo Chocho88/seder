@@ -1,0 +1,89 @@
+// React-friendly i18n on top of the design-system dictionary approach.
+// UI chrome strings only — user content is never translated, it renders with
+// per-line direction via lib/rtl.ts.
+
+import { useSyncExternalStore } from 'react';
+import type { Lang } from './types';
+
+const DICT: Record<string, { en: string; he: string }> = {
+  app_title: { en: 'Seder', he: 'סדר' },
+  view_today: { en: 'Today', he: 'היום' },
+  view_board: { en: 'Board', he: 'לוח' },
+  view_matrix: { en: 'Matrix', he: 'מטריצה' },
+  view_all: { en: 'All', he: 'הכל' },
+  pinned: { en: 'Pinned', he: 'מוצמדות' },
+  inbox: { en: 'Inbox', he: 'נכנסות' },
+  add_item: { en: 'Add item', he: 'פריט חדש' },
+  add_category: { en: 'New list', he: 'רשימה חדשה' },
+  capture_placeholder: { en: 'Add anything… (#list, ! today)', he: 'להוסיף כל דבר… (#רשימה, ! להיום)' },
+  search_or_add: { en: 'Type to add or search…', he: 'הקלידו כדי להוסיף או לחפש…' },
+  urgent: { en: 'Urgent', he: 'דחוף' },
+  not_urgent: { en: 'Not urgent', he: 'לא דחוף' },
+  important: { en: 'Important', he: 'חשוב' },
+  not_important: { en: 'Not important', he: 'לא חשוב' },
+  next_move: { en: 'Next move', he: 'הצעד הבא' },
+  next_move_placeholder: { en: 'What is the next move?', he: 'מה הצעד הבא?' },
+  state_do: { en: 'Do', he: 'לעשות' },
+  state_wait: { en: 'Waiting', he: 'בהמתנה' },
+  state_shape: { en: 'Shape', he: 'לחידוד' },
+  waiting_for: { en: 'Waiting for', he: 'מחכה ל' },
+  done_today: { en: 'done today', he: 'הושלמו היום' },
+  sweep_done: { en: 'Clear done', he: 'לנקות שהושלמו' },
+  today_empty: { en: 'Nothing planned yet. Pull tasks in from the board.', he: 'עוד לא תוכנן כלום. משכו משימות מהלוח.' },
+  suggestions: { en: 'Morning suggestions', he: 'הצעות בוקר' },
+  add_to_today: { en: 'Add to today', he: 'להוסיף להיום' },
+  dismiss: { en: 'Dismiss', he: 'לא היום' },
+  notes: { en: 'Notes', he: 'הערות' },
+  sub_items: { en: 'Sub-items', he: 'תתי־משימות' },
+  links: { en: 'Links', he: 'קישורים' },
+  due: { en: 'Due', he: 'יעד' },
+  nudge: { en: 'Nudge', he: 'תזכורת' },
+  delete: { en: 'Delete', he: 'למחוק' },
+  pin: { en: 'Pin', he: 'להצמיד' },
+  unpin: { en: 'Unpin', he: 'לבטל הצמדה' },
+  today_flag: { en: 'Today', he: 'היום' },
+  style_mono: { en: 'Mono', he: 'מונו' },
+  style_tint: { en: 'Tint', he: 'גוון' },
+  style_header: { en: 'Header', he: 'כותרת' },
+  settings: { en: 'Settings', he: 'הגדרות' },
+  days_short: { en: 'd', he: 'י׳' },
+};
+
+let currentLang: Lang = (localStorage.getItem('klod-lang') as Lang) || 'he';
+const listeners = new Set<() => void>();
+
+export function t(key: string): string {
+  const e = DICT[key];
+  if (!e) return key;
+  return e[currentLang] ?? e.en;
+}
+
+export function getLang(): Lang {
+  return currentLang;
+}
+
+export function setLang(lang: Lang): void {
+  currentLang = lang;
+  localStorage.setItem('klod-lang', lang);
+  const html = document.documentElement;
+  html.setAttribute('lang', lang);
+  html.setAttribute('dir', lang === 'he' ? 'rtl' : 'ltr');
+  listeners.forEach((l) => l());
+}
+
+export function toggleLang(): Lang {
+  setLang(currentLang === 'en' ? 'he' : 'en');
+  return currentLang;
+}
+
+/** React hook: re-renders on language change. Returns [lang, t, isRTL]. */
+export function useLang(): [Lang, typeof t, boolean] {
+  const lang = useSyncExternalStore(
+    (cb) => {
+      listeners.add(cb);
+      return () => listeners.delete(cb);
+    },
+    () => currentLang,
+  );
+  return [lang, t, lang === 'he'];
+}

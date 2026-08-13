@@ -1,0 +1,103 @@
+.capture-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: var(--surface-overlay);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 18vh;
+}
+
+.capture {
+  width: min(560px, 92vw);
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+}
+
+.capture-inputrow {
+  display: flex;
+  align-items: center;
+}
+
+.capture-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--text-lg);
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  outline: none;
+}
+.capture-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.capture-mic {
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: var(--space-3);
+  margin-inline-end: var(--space-2);
+  border-radius: var(--radius-md);
+  display: inline-flex;
+}
+.capture-mic:hover {
+  color: var(--text-primary);
+  background: var(--surface-sunken);
+}
+.capture-mic.listening {
+  color: var(--color-accent);
+  animation: mic-pulse 1.2s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.capture-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5);
+  border-top: 1px solid var(--border-color);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+.capture-today-flag {
+  color: var(--color-accent-dark);
+  background: var(--color-accent-subtle);
+  border-radius: var(--radius-full);
+  padding: 1px var(--space-2);
+}
+[data-theme='dark'] .capture-today-flag {
+  color: var(--color-accent);
+}
+
+.capture-matches {
+  border-top: 1px solid var(--border-color);
+  padding: var(--space-1);
+}
+.capture-match {
+  display: block;
+  width: 100%;
+  text-align: start;
+  border: none;
+  background: transparent;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-family: var(--font-body);
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.capture-match:hover {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}

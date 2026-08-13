@@ -1,0 +1,194 @@
+/* ============================================
+   Seder — app foundation on the KLOD Clean preset
+   Obsidian-calm, PostHog-clicky. Black/white + emerald.
+   ============================================ */
+
+:root {
+  /* Emerald accent */
+  --color-accent: #10b77f;
+  --color-accent-hover: #0ea371;
+  --color-accent-dark: #0c8f63;
+  --color-accent-light: #e7f7f1;
+  --color-accent-subtle: rgba(16, 183, 127, 0.07);
+  --color-accent-muted: rgba(16, 183, 127, 0.16);
+
+  /* Category palette — dusty, desaturated, never dominant.
+     Each key: solid (dot/edge), tint (card wash), text (readable on tint) */
+  --cat-sage: #7c9885;
+  --cat-sage-tint: rgba(124, 152, 133, 0.07);
+  --cat-clay: #bd8467;
+  --cat-clay-tint: rgba(189, 132, 103, 0.07);
+  --cat-rose: #b98695;
+  --cat-rose-tint: rgba(185, 134, 149, 0.07);
+  --cat-slate: #7d93b2;
+  --cat-slate-tint: rgba(125, 147, 178, 0.08);
+  --cat-ochre: #bda878;
+  --cat-ochre-tint: rgba(189, 168, 120, 0.08);
+  --cat-plum: #9b8aa6;
+  --cat-plum-tint: rgba(155, 138, 166, 0.08);
+
+  /* State colors */
+  --state-do: var(--color-accent);
+  --state-wait: var(--color-neutral-400);
+
+  /* Clicky press feel (PostHog energy, used on interactive elements only) */
+  --press-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+  --press-translate: 1px;
+
+  /* Layout */
+  --detail-panel-width: 380px;
+  --matrix-min-height: 320px;
+}
+
+[data-theme='dark'] {
+  --color-accent-light: #123b2e;
+  --color-accent-subtle: rgba(16, 183, 127, 0.1);
+  --color-accent-muted: rgba(16, 183, 127, 0.22);
+  --cat-sage-tint: rgba(124, 152, 133, 0.12);
+  --cat-clay-tint: rgba(189, 132, 103, 0.12);
+  --cat-rose-tint: rgba(185, 134, 149, 0.12);
+  --cat-slate-tint: rgba(125, 147, 178, 0.13);
+  --cat-ochre-tint: rgba(189, 168, 120, 0.12);
+  --cat-plum-tint: rgba(155, 138, 166, 0.13);
+  --press-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* --- App shell --- */
+html,
+body {
+  height: 100%;
+}
+body {
+  background: var(--surface-page);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  margin: 0;
+}
+#root {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.seder-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.seder-main {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-6) var(--space-8);
+  max-width: var(--container-2xl);
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .seder-main {
+    padding: var(--space-4);
+  }
+}
+
+/* --- View switcher (top center, calm segmented control) --- */
+.view-switcher {
+  display: inline-flex;
+  gap: var(--space-0-5);
+  padding: 3px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-md);
+}
+.view-switcher button {
+  border: none;
+  background: transparent;
+  padding: var(--space-1-5) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default),
+    transform var(--duration-fast) var(--ease-default);
+}
+.view-switcher button:hover {
+  color: var(--text-primary);
+}
+.view-switcher button:active {
+  transform: translateY(var(--press-translate));
+}
+.view-switcher button[aria-current='true'] {
+  background: var(--surface-card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* --- Category color hooks --- */
+.cat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  background: var(--cat-color, var(--color-neutral-400));
+}
+
+[data-cat='sage'] { --cat-color: var(--cat-sage); --cat-tint: var(--cat-sage-tint); }
+[data-cat='clay'] { --cat-color: var(--cat-clay); --cat-tint: var(--cat-clay-tint); }
+[data-cat='rose'] { --cat-color: var(--cat-rose); --cat-tint: var(--cat-rose-tint); }
+[data-cat='slate'] { --cat-color: var(--cat-slate); --cat-tint: var(--cat-slate-tint); }
+[data-cat='ochre'] { --cat-color: var(--cat-ochre); --cat-tint: var(--cat-ochre-tint); }
+[data-cat='plum'] { --cat-color: var(--cat-plum); --cat-tint: var(--cat-plum-tint); }
+
+/* --- Card style switcher (decide-by-looking) ---
+   mono   : monochrome card + colored left edge (logical: inline-start)
+   tint   : barely-there category wash on the whole card
+   header : tint on the title row only */
+.category-card {
+  background: var(--surface-card);
+  border: var(--card-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+[data-cardstyle='mono'] .category-card {
+  border-inline-start: 2px solid var(--cat-color, var(--border-color));
+}
+[data-cardstyle='tint'] .category-card {
+  background: linear-gradient(var(--cat-tint, transparent), var(--cat-tint, transparent)),
+    var(--surface-card);
+}
+[data-cardstyle='header'] .category-card .category-card-header {
+  background: var(--cat-tint, transparent);
+}
+
+/* --- Item state visuals --- */
+.item-wait {
+  opacity: 0.55;
+}
+.item-done .item-title {
+  text-decoration: line-through;
+  color: var(--text-tertiary);
+}
+
+/* --- Focus & press primitives (clicky, never loud) --- */
+.pressable {
+  transition:
+    transform var(--duration-fast) var(--ease-default),
+    background var(--duration-fast) var(--ease-default),
+    box-shadow var(--duration-fast) var(--ease-default);
+}
+.pressable:active {
+  transform: translateY(var(--press-translate));
+}
+
+/* --- Scrollbars: quiet --- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-neutral-300) transparent;
+}
+[data-theme='dark'] * {
+  scrollbar-color: var(--color-neutral-700) transparent;
+}
