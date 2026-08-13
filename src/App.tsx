@@ -7,7 +7,7 @@ import Board from './components/Board';
 import MatrixView from './components/MatrixView';
 import DetailPanel from './components/DetailPanel';
 import CaptureBar from './components/CaptureBar';
-import StyleSwitcher from './components/StyleSwitcher';
+import SettingsMenu from './components/SettingsMenu';
 import MobileBar from './components/MobileBar';
 
 // One clean scrollable column on phones: lists on top, matrix below (the
@@ -53,7 +53,7 @@ export default function App() {
           <span className="app-logo-text">סדר</span>
         </div>
         <div className="app-header-right">
-          <StyleSwitcher />
+          <SettingsMenu />
           <button className="header-toggle lang-toggle" data-toggle="lang" onClick={() => toggleLang()}>
             {lang === 'en' ? 'HE' : 'EN'}
           </button>

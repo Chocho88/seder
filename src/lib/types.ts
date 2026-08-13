@@ -34,6 +34,7 @@ export interface Item {
   today: boolean;
   todaySince: number | null; // for rollover aging ("2d")
   pinned: boolean;
+  matrixOrder?: number; // manual visual order inside a matrix quadrant
 
   due: number | null; // epoch ms, optional
   nudge: number | null; // for wait items: "check in on..."
@@ -53,7 +54,8 @@ export interface Category {
   colorKey: CategoryColorKey;
   order: number;
   archived: boolean;
-  // bento geometry — user-dragged size; unset = natural
+  system?: boolean; // the Pool: the basic intake list, undeletable, i18n-named
+  // bento geometry - user-dragged size; unset = natural
   w?: number; // grid column span
   h?: number | null; // fixed pixel height (content scrolls); null/unset = natural
 }
@@ -64,7 +66,11 @@ export type CategoryColorKey =
   | 'rose'
   | 'slate'
   | 'ochre'
-  | 'plum';
+  | 'plum'
+  | 'teal'
+  | 'coral'
+  | 'mustard'
+  | 'fog';
 
 export const CATEGORY_COLOR_KEYS: CategoryColorKey[] = [
   'sage',
@@ -73,6 +79,10 @@ export const CATEGORY_COLOR_KEYS: CategoryColorKey[] = [
   'slate',
   'ochre',
   'plum',
+  'teal',
+  'coral',
+  'mustard',
+  'fog',
 ];
 
 // UI-level types

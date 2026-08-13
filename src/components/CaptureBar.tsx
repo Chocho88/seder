@@ -24,6 +24,7 @@ export default function CaptureBar() {
   const [text, setText] = useState('');
   const [sel, setSel] = useState(-1); // keyboard selection in matches; -1 = capture
   const [listening, setListening] = useState(false);
+  const [chosenCatId, setChosenCatId] = useState<string | null>(null); // chip choice; null = Pool
   const inputRef = useRef<HTMLInputElement>(null);
   const recRef = useRef<any>(null);
 
@@ -43,16 +44,20 @@ export default function CaptureBar() {
     else {
       setText('');
       setSel(-1);
+      setChosenCatId(null);
       recRef.current?.stop?.();
       setListening(false);
     }
   }, [captureOpen]);
 
-  // Parse: #category (prefix match, any language), ! = today
+  // Parse: #category (prefix match, any language), ! = today.
+  // Destination resolution: #syntax wins, then the tapped chip, then the Pool -
+  // the basic intake for everything not yet assigned.
+  const pool = categories.find((c) => c.system) ?? categories[0] ?? null;
   const parsed = useMemo(() => {
     let rest = text;
     let today = false;
-    let category = categories[0] ?? null;
+    let category = categories.find((c) => c.id === chosenCatId) ?? pool;
     if (rest.includes('!')) {
       today = true;
       rest = rest.replace('!', '');
@@ -66,7 +71,7 @@ export default function CaptureBar() {
       }
     }
     return { title: rest.trim(), today, category };
-  }, [text, categories]);
+  }, [text, categories, chosenCatId, pool]);
 
   const matches = useMemo(() => {
     const q = text.trim().toLowerCase();
@@ -157,8 +162,11 @@ export default function CaptureBar() {
           {parsed.category && (
             <span className="capture-dest-chip" data-cat={parsed.category.colorKey}>
               <span className="cat-dot" />
-              <span className="capture-dest-name" {...dirProps(parsed.category.name)}>
-                {parsed.category.name}
+              <span
+                className="capture-dest-name"
+                {...dirProps(parsed.category.system ? t('pool') : parsed.category.name)}
+              >
+                {parsed.category.system ? t('pool') : parsed.category.name}
               </span>
             </span>
           )}
@@ -173,6 +181,29 @@ export default function CaptureBar() {
               <use href={`${icons}#icon-mic`} />
             </svg>
           </button>
+        </div>
+
+        {/* destination chooser: one tap per list; the Pool is home base */}
+        <div className="capture-cats" role="radiogroup">
+          {categories.map((c) => {
+            const active = parsed.category?.id === c.id;
+            return (
+              <button
+                key={c.id}
+                role="radio"
+                aria-checked={active}
+                className={`capture-cat${active ? ' active' : ''}`}
+                data-cat={c.colorKey}
+                onClick={() => {
+                  setChosenCatId(c.id);
+                  inputRef.current?.focus();
+                }}
+              >
+                <span className="cat-dot" />
+                <span {...dirProps(c.system ? t('pool') : c.name)}>{c.system ? t('pool') : c.name}</span>
+              </button>
+            );
+          })}
         </div>
 
         {matches.length > 0 && (

@@ -10,6 +10,8 @@ const KEYS = {
   detail: 'seder-detail',
   theme: 'klod-theme', // shared with design system
   lang: 'klod-lang',
+  fontsize: 'seder-fontsize',
+  colored: 'seder-colored',
 } as const;
 
 function applyOverridesNow(): void {
@@ -20,14 +22,28 @@ function applyOverridesNow(): void {
   }
   const theme = (localStorage.getItem(KEYS.theme) as Theme) || 'light';
   const lang = (localStorage.getItem(KEYS.lang) as Lang) || 'he';
-  const cardstyle = (localStorage.getItem(KEYS.cardstyle) as CardStyle) || 'mono';
+  const cardstyle = (localStorage.getItem(KEYS.cardstyle) as CardStyle) || 'tint';
   const detail = (localStorage.getItem(KEYS.detail) as DetailMode) || 'panel';
+  const fontsize = localStorage.getItem(KEYS.fontsize) || 'm';
+  const colored = localStorage.getItem(KEYS.colored) || 'on';
   const html = document.documentElement;
   html.setAttribute('data-theme', theme);
   html.setAttribute('lang', lang);
   html.setAttribute('dir', lang === 'he' ? 'rtl' : 'ltr');
   html.setAttribute('data-cardstyle', cardstyle);
   html.setAttribute('data-detail', detail);
+  html.setAttribute('data-fontsize', fontsize);
+  html.setAttribute('data-colored', colored);
+}
+
+export function setFontSize(size: 's' | 'm' | 'l'): void {
+  localStorage.setItem(KEYS.fontsize, size);
+  document.documentElement.setAttribute('data-fontsize', size);
+}
+
+export function setColoredLists(on: boolean): void {
+  localStorage.setItem(KEYS.colored, on ? 'on' : 'off');
+  document.documentElement.setAttribute('data-colored', on ? 'on' : 'off');
 }
 
 // Run at module load — this module is imported by the store, so overrides land
@@ -50,7 +66,7 @@ export function persistView(view: ViewId): void {
 
 export function initialCardStyle(): CardStyle {
   const v = localStorage.getItem(KEYS.cardstyle);
-  return v === 'tint' || v === 'header' ? v : 'mono';
+  return v === 'mono' || v === 'header' ? v : 'tint';
 }
 
 export function persistCardStyle(style: CardStyle): void {

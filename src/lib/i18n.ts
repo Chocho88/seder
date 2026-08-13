@@ -47,6 +47,13 @@ const DICT: Record<string, { en: string; he: string }> = {
   style_header: { en: 'Header', he: 'כותרת' },
   settings: { en: 'Settings', he: 'הגדרות' },
   days_short: { en: 'd', he: 'י׳' },
+  pool: { en: 'Pool', he: 'מאגר' },
+  card_style: { en: 'Card style', he: 'סגנון קלפים' },
+  font_size: { en: 'Font size', he: 'גודל גופן' },
+  colored_lists: { en: 'Colored lists', he: 'רשימות צבעוניות' },
+  size_s: { en: 'S', he: 'ק' },
+  size_m: { en: 'M', he: 'ב' },
+  size_l: { en: 'L', he: 'ג' },
 };
 
 let currentLang: Lang = (localStorage.getItem('klod-lang') as Lang) || 'he';

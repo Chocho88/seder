@@ -86,6 +86,33 @@ export const useSeder = create<SederState>((set, get) => ({
 
   async init() {
     await seedIfEmpty(wantsFreshSeed());
+
+    // The Pool: the basic intake list. Fixed id makes creation idempotent
+    // (init can run twice under StrictMode); stray duplicates get removed.
+    const pools = await db.categories.filter((c) => c.system === true).toArray();
+    if (!pools.some((p) => p.id === 'pool-system')) {
+      await db.categories.put({
+        id: 'pool-system',
+        name: 'Pool',
+        colorKey: 'fog',
+        order: -1,
+        archived: false,
+        system: true,
+      });
+    }
+    const strays = pools.filter((p) => p.id !== 'pool-system');
+    if (strays.length > 0) {
+      await db.categories.bulkDelete(strays.map((p) => p.id));
+    }
+
+    // One-time cleanup: the user never wants an em-dash anywhere.
+    await db.items
+      .filter((i) => i.title.includes('—') || i.notes.includes('—'))
+      .modify((i) => {
+        i.title = i.title.split('—').join('-');
+        i.notes = i.notes.split('—').join('-');
+      });
+
     const data = await loadAll();
     let open = initialOpenItem();
     // ?open=first → deterministically open the first rich item (screenshots/tests)

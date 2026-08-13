@@ -1,4 +1,4 @@
-// Demo/seed data — the user's real whiteboard + Keep content, so screenshots
+// Demo/seed data - the user's real whiteboard + Keep content, so screenshots
 // and gauntlet reviews judge the app on real life, not lorem ipsum.
 
 import { db, uid } from './db';
@@ -64,17 +64,17 @@ export async function seedIfEmpty(force = false): Promise<void> {
       item({ title: 'לאסוף שאלות מחוקרים', categoryId: sages.id, important: true, urgent: true, today: true, todaySince: now, order: 0 }),
       item({ title: 'לבנות POC קבוצת ווצאפ', categoryId: sages.id, important: true, urgent: true, order: 1 }),
       item({
-        title: 'Ku Domains — Value Doc',
+        title: 'Ku Domains - Value Doc',
         categoryId: sages.id,
         nextMove: 'לכתוב טיוטה ראשונה',
         important: true,
         order: 2,
         notes: 'Raw ↔ Processed. Data | Information | Knowledge | Wisdom.',
       }),
-      item({ title: 'DG — Value Doc', categoryId: sages.id, important: true, order: 3 }),
+      item({ title: 'DG - Value Doc', categoryId: sages.id, important: true, order: 3 }),
       item({ title: 'AI Tools allocation', categoryId: sages.id, order: 4 }),
       item({
-        title: 'Kahneman — Thinking Fast and Slow',
+        title: 'Kahneman - Thinking Fast and Slow',
         categoryId: sages.id,
         nextMove: 'לקרוא את הפרק על היוריסטיקות',
         order: 5,
@@ -107,7 +107,7 @@ export async function seedIfEmpty(force = false): Promise<void> {
       item({ title: 'ראיון בשגרירות', categoryId: reloc.id, nextMove: 'לקבוע תאריך לראיון', urgent: true, order: 3 }),
       item({ title: 'לסגור עוסק זעיר', categoryId: reloc.id, order: 4 }),
       item({
-        title: 'רהיטים — מחירים',
+        title: 'רהיטים - מחירים',
         categoryId: reloc.id,
         kind: 'note',
         order: 5,
@@ -123,7 +123,7 @@ export async function seedIfEmpty(force = false): Promise<void> {
         categoryId: general.id,
         nextMove: 'לקנות מתנות: שירה, עמרי, עדי',
         order: 3,
-        notes: 'שירה — תכשיט יהלום קטן\nעמרי — בגד\nיותם — כובע\nאבא ואמא — ציוד למוזיקה',
+        notes: 'שירה - תכשיט יהלום קטן\nעמרי - בגד\nיותם - כובע\nאבא ואמא - ציוד למוזיקה',
       }),
       item({ title: 'מחשבות על ניו יורק', categoryId: general.id, kind: 'note', order: 4, notes: 'נראה שבלי לדעת כל החיים אהבתי את ניו יורק והיא עיצבה לי את הטעם בלי להכיר אותי.' }),
     ];

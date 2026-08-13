@@ -30,6 +30,8 @@ export default function CategoryCard({ category }: { category: Category }) {
   const done = top.filter((i) => i.done);
 
   const dragForeign = dragItemId !== null && items.find((i) => i.id === dragItemId)?.categoryId !== category.id;
+  // the Pool is a system list - its name speaks the UI language
+  const displayName = category.system ? t('pool') : category.name;
 
   const submit = async () => {
     const title = adding.trim();
@@ -42,6 +44,7 @@ export default function CategoryCard({ category }: { category: Category }) {
     <section
       className={`category-card${over ? ' drag-over' : ''}`}
       data-cat={category.colorKey}
+      data-system={category.system ? '' : undefined}
       onDragOver={(e) => {
         if (dragForeign || (dragCategoryId && dragCategoryId !== category.id)) {
           e.preventDefault();
@@ -96,8 +99,8 @@ export default function CategoryCard({ category }: { category: Category }) {
             </span>
           )}
         </span>
-        <h2 className="category-card-title" {...dirProps(category.name)}>
-          {category.name}
+        <h2 className="category-card-title" {...dirProps(displayName)}>
+          {displayName}
         </h2>
         <span className="category-card-count">{open.length}</span>
       </header>

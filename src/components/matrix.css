@@ -161,3 +161,18 @@
   border-color: var(--color-accent);
   background: var(--color-accent-subtle);
 }
+
+/* --- in-quadrant visual ordering: the insertion line --- */
+.matrix-slot {
+  position: relative;
+}
+.matrix-slot.insert-before::before {
+  content: '';
+  position: absolute;
+  inset-inline: var(--space-2);
+  top: -1.5px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--color-accent);
+  pointer-events: none;
+}

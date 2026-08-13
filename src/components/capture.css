@@ -306,3 +306,41 @@
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
 }
+
+/* --- destination chips: one tap chooses the list; Pool is home base --- */
+.capture-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1-5);
+  padding: var(--space-2) var(--space-5) var(--space-1);
+}
+.capture-cat {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-2-5, 0.625rem);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-default),
+    background var(--duration-fast) var(--ease-default),
+    color var(--duration-fast) var(--ease-default);
+}
+.capture-cat .cat-dot {
+  width: 7px;
+  height: 7px;
+}
+.capture-cat:hover {
+  border-color: var(--cat-color);
+}
+.capture-cat.active {
+  border-color: var(--cat-color);
+  background: color-mix(in srgb, var(--cat-color) 14%, transparent);
+  color: var(--text-primary);
+}
