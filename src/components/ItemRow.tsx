@@ -16,7 +16,10 @@ import './itemrow.css';
 const HOVER_DELAY = 380;
 
 export default function ItemRow({ item, depth = 0, leaf = false }: { item: Item; depth?: number; leaf?: boolean }) {
-  const { items, toggleDone, openItem, openItemId, setDragItem, dragItemId, setToday, togglePinned } = useSeder();
+  const { items, categories, toggleDone, openItem, openItemId, setDragItem, dragItemId, setToday, togglePinned } =
+    useSeder();
+  // every row carries its list's color as its accent, wherever it renders
+  const catColor = categories.find((c) => c.id === item.categoryId)?.colorKey;
   const state = itemState(item);
   const kids = childrenOf(items, item.id);
   const rowRef = useRef<HTMLDivElement>(null);
@@ -63,6 +66,7 @@ export default function ItemRow({ item, depth = 0, leaf = false }: { item: Item;
         ]
           .filter(Boolean)
           .join(' ')}
+        data-cat={catColor}
         style={depth ? { paddingInlineStart: `calc(var(--space-4) + ${depth} * var(--space-5))` } : undefined}
         draggable
         onDragStart={(e) => {

@@ -2,21 +2,62 @@
    DOM order is lists-direction-aware: in RTL the lists take the
    inline-start (right, like the whiteboard) and the matrix sits left. */
 
+/* The whiteboard's geography holds in both languages: matrix on the
+   physical LEFT, lists on the physical RIGHT. The container is laid out
+   physically (ltr) so the draggable split math stays simple; each side
+   restores the page's reading direction inside itself. */
 .canvas {
+  direction: ltr;
   display: grid;
-  grid-template-columns: minmax(420px, 5fr) minmax(520px, 7fr);
-  gap: var(--space-10);
+  grid-template-columns: clamp(360px, var(--split, 42%), 65%) 14px minmax(0, 1fr);
+  gap: 0 var(--space-4);
   align-items: start;
 }
-/* the whiteboard's geography holds in both languages: matrix on the
-   physical LEFT, lists on the physical RIGHT. RTL grids lay track 1 on
-   the right — so in RTL the lists take track 1 (which must then carry
-   the wide fraction) and the matrix moves to track 2. */
-[dir='rtl'] .canvas {
-  grid-template-columns: minmax(520px, 7fr) minmax(420px, 5fr);
+[dir='rtl'] .canvas > section {
+  direction: rtl;
 }
-[dir='rtl'] .canvas .canvas-side {
-  order: 2;
+
+/* --- the draggable border between the two worlds --- */
+.canvas-divider {
+  align-self: stretch;
+  display: flex;
+  justify-content: center;
+  cursor: col-resize;
+  touch-action: none;
+}
+.canvas-divider-line {
+  width: 1px;
+  background: var(--border-color);
+  transition: width var(--duration-fast) var(--ease-default), background var(--duration-fast) var(--ease-default);
+}
+.canvas-divider:hover .canvas-divider-line,
+.canvas-divider:active .canvas-divider-line {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--color-accent);
+}
+
+/* --- the matrix's lower lip: drag to pull the quadrants taller --- */
+.canvas-matrix-lip {
+  height: 12px;
+  margin-block-start: calc(-1 * var(--space-4));
+  cursor: row-resize;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.canvas-matrix-lip::after {
+  content: '';
+  width: 44px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border-color);
+  transition: background var(--duration-fast) var(--ease-default);
+}
+.canvas-matrix-lip:hover::after,
+.canvas-matrix-lip:active::after {
+  background: var(--color-accent);
 }
 
 .canvas-side {
@@ -114,6 +155,9 @@
 @media (max-width: 1100px) and (min-width: 769px) {
   .canvas {
     grid-template-columns: 1fr;
+  }
+  .canvas-divider {
+    display: none;
   }
   .canvas-side {
     position: static;

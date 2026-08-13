@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useSeder, topLevelOf } from '../lib/store';
 import { dirProps } from '../lib/rtl';
 import { t } from '../lib/i18n';
-import type { Category } from '../lib/types';
+import { CATEGORY_COLOR_KEYS, type Category } from '../lib/types';
 import ItemRow from './ItemRow';
 import './categorycard.css';
 
@@ -20,9 +20,11 @@ export default function CategoryCard({ category }: { category: Category }) {
     setDragItem,
     moveItemToCategory,
     reorderCategory,
+    updateCategory,
   } = useSeder();
   const [adding, setAdding] = useState('');
   const [over, setOver] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const top = topLevelOf(items, category.id);
   const open = top.filter((i) => !i.done);
   const done = top.filter((i) => i.done);
@@ -67,7 +69,33 @@ export default function CategoryCard({ category }: { category: Category }) {
         }}
         onDragEnd={() => setDragCategory(null)}
       >
-        <span className="cat-dot" />
+        <span className="category-card-colorwrap">
+          <button
+            className="cat-dot cat-dot-button"
+            aria-label="Color"
+            draggable={false}
+            onClick={(e) => {
+              e.stopPropagation();
+              setPickerOpen((o) => !o);
+            }}
+          />
+          {pickerOpen && (
+            <span className="category-colorpicker" onClick={(e) => e.stopPropagation()}>
+              {CATEGORY_COLOR_KEYS.map((key) => (
+                <button
+                  key={key}
+                  className={`category-colorswatch${key === category.colorKey ? ' current' : ''}`}
+                  data-cat={key}
+                  aria-label={key}
+                  onClick={() => {
+                    void updateCategory(category.id, { colorKey: key });
+                    setPickerOpen(false);
+                  }}
+                />
+              ))}
+            </span>
+          )}
+        </span>
         <h2 className="category-card-title" {...dirProps(category.name)}>
           {category.name}
         </h2>

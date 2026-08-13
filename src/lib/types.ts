@@ -53,6 +53,9 @@ export interface Category {
   colorKey: CategoryColorKey;
   order: number;
   archived: boolean;
+  // bento geometry — user-dragged size; unset = natural
+  w?: number; // grid column span
+  h?: number | null; // fixed pixel height (content scrolls); null/unset = natural
 }
 
 export type CategoryColorKey =

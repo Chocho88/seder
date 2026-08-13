@@ -1,9 +1,12 @@
 // The holistic desktop surface — no tabs, no views. One canvas, like the
 // whiteboard: the matrix side (today's battle plan) and the lists side
-// (the whole life), everything visible, everything draggable between.
+// (the whole life). Everything draggable; every region resizable — the
+// split between the sides drags, the matrix pulls taller by its lower lip.
 
+import { useRef, useState } from 'react';
 import icons from '../../../design-system/icons.svg';
 import { useSeder, morningCandidates } from '../lib/store';
+import { startDrag } from '../lib/resize';
 import { t, useLang } from '../lib/i18n';
 import { dirProps } from '../lib/rtl';
 import Board from './Board';
@@ -11,9 +14,18 @@ import MatrixView from './MatrixView';
 import ItemRow from './ItemRow';
 import './canvas.css';
 
+const SPLIT_KEY = 'seder-split';
+const ROWMIN_KEY = 'seder-matrix-rowmin';
+
 export default function Canvas() {
   const { items, setToday, sweepDone, updateItem } = useSeder();
   const [lang] = useLang();
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [split, setSplit] = useState<number>(() => Number(localStorage.getItem(SPLIT_KEY)) || 42);
+  const [rowMin, setRowMin] = useState<number | null>(() => {
+    const v = Number(localStorage.getItem(ROWMIN_KEY));
+    return v > 0 ? v : null;
+  });
   const suggestions = morningCandidates(items).slice(0, 4);
   const doneToday = items.filter((i) => i.done);
 
@@ -23,9 +35,37 @@ export default function Canvas() {
     month: 'long',
   }).format(new Date());
 
+  const dragSplit = (e: React.PointerEvent) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const start = split;
+    let final = start;
+    startDrag(
+      e,
+      (dx) => {
+        final = Math.min(65, Math.max(25, start + (dx / rect.width) * 100));
+        setSplit(final);
+      },
+      () => localStorage.setItem(SPLIT_KEY, String(Math.round(final * 10) / 10)),
+    );
+  };
+
+  const dragMatrixHeight = (e: React.PointerEvent) => {
+    const start = rowMin ?? 220;
+    let final = start;
+    startDrag(
+      e,
+      (_dx, dy) => {
+        final = Math.min(480, Math.max(120, start + dy / 2));
+        setRowMin(final);
+      },
+      () => localStorage.setItem(ROWMIN_KEY, String(Math.round(final))),
+    );
+  };
+
   return (
-    <div className="canvas">
-      <section className="canvas-side">
+    <div ref={canvasRef} className="canvas" style={{ ['--split' as string]: `${split}%` }}>
+      <section className="canvas-side" style={rowMin ? { ['--matrix-row-min' as string]: `${rowMin}px` } : undefined}>
         <header className="canvas-date">
           <span className="canvas-date-dot" aria-hidden />
           <h1 className="canvas-date-label">{dateLabel}</h1>
@@ -70,6 +110,15 @@ export default function Canvas() {
         )}
 
         <MatrixView />
+        <div
+          className="canvas-matrix-lip"
+          title=""
+          onPointerDown={dragMatrixHeight}
+          onDoubleClick={() => {
+            setRowMin(null);
+            localStorage.removeItem(ROWMIN_KEY);
+          }}
+        />
 
         {doneToday.length > 0 && (
           <div className="canvas-done">
@@ -96,6 +145,19 @@ export default function Canvas() {
           </div>
         )}
       </section>
+
+      <div
+        className="canvas-divider"
+        role="separator"
+        aria-orientation="vertical"
+        onPointerDown={dragSplit}
+        onDoubleClick={() => {
+          setSplit(42);
+          localStorage.setItem(SPLIT_KEY, '42');
+        }}
+      >
+        <span className="canvas-divider-line" aria-hidden />
+      </div>
 
       <section className="canvas-lists">
         <Board />

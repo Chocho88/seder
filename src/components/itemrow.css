@@ -34,12 +34,21 @@
   background: var(--color-accent-subtle);
 }
 
-/* --- Checkbox: drawn rounded-rect, generous hidden hit area --- */
+/* Rows accent from their list: --cat-color arrives via [data-cat] on the
+   row itself, so it holds in the matrix, the shelf and the done trail too. */
+.item-row {
+  --row-accent: var(--cat-color, var(--color-accent));
+}
+.item-row.item-open {
+  background: color-mix(in srgb, var(--row-accent) 9%, transparent);
+}
+
+/* --- Checkbox: a drawn circle, generous hidden hit area --- */
 .item-check {
   position: relative;
   width: 18px;
   height: 18px;
-  border-radius: 5px;
+  border-radius: var(--radius-full);
   border: 1.5px solid var(--border-color-strong);
   background: transparent;
   cursor: pointer;
@@ -61,8 +70,8 @@
   inset: -8px;
 }
 .item-check:hover {
-  border-color: var(--color-accent);
-  background: var(--color-accent-subtle);
+  border-color: var(--row-accent);
+  background: color-mix(in srgb, var(--row-accent) 10%, transparent);
 }
 .item-check:active {
   transform: scale(0.88);
@@ -75,8 +84,8 @@
     0 0 0 4px var(--color-accent);
 }
 .item-check.checked {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
+  background: var(--row-accent);
+  border-color: var(--row-accent);
 }
 /* the check is a drawn path that draws itself in on toggle */
 .item-check .check-draw {
@@ -106,30 +115,20 @@
   border-style: dashed;
 }
 
-/* --- Note mark: two quiet text-lines, drawn --- */
+/* --- Note mark: a small quiet circle (no checkbox — nothing to finish) --- */
 .item-note-mark {
   width: 18px;
   height: 18px;
   flex-shrink: 0;
   position: relative;
 }
-.item-note-mark::before,
-.item-note-mark::after {
+.item-note-mark::before {
   content: '';
   position: absolute;
-  inset-inline-start: 3px;
-  height: 1.5px;
-  border-radius: 1px;
-  background: var(--text-tertiary);
-  opacity: 0.8;
-}
-.item-note-mark::before {
-  top: 6px;
-  width: 12px;
-}
-.item-note-mark::after {
-  top: 10.5px;
-  width: 8px;
+  inset: 5.5px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--text-tertiary);
+  opacity: 0.7;
 }
 
 /* --- Title: type level one — the only full-strength thing in the row.
@@ -172,7 +171,7 @@
 .item-rest-pin {
   width: 12px;
   height: 12px;
-  color: var(--color-accent);
+  color: var(--row-accent);
 }
 
 /* --- Hover actions: icon buttons that surface under the hand,
@@ -220,7 +219,7 @@
   color: var(--text-primary);
 }
 .item-action.on {
-  color: var(--color-accent);
+  color: var(--row-accent, var(--color-accent));
 }
 .item-action .icon {
   width: 13px;
