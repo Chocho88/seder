@@ -1,64 +1,168 @@
+/* Today — the calm home. One dated anchor up top, the cross in the middle,
+   suggestions in the margin, the done trail underneath. Whitespace is load-
+   bearing: nothing here competes with the day's few real items. */
+
 .today {
+  max-width: 1120px;
+  margin-inline: auto;
+}
+
+/* --- header: the day's anchor --- */
+.today-header {
   display: flex;
-  gap: var(--space-6);
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-block-end: var(--space-8);
+}
+.today-mark {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--color-accent);
+  align-self: center;
+  flex-shrink: 0;
+}
+.today-title {
+  margin: 0;
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+}
+.today-date {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+/* --- body: matrix + aside --- */
+.today-body {
+  display: flex;
+  gap: var(--space-10);
   align-items: flex-start;
 }
 .today-main {
   flex: 1;
   min-width: 0;
 }
+
+/* --- empty day: a single unchecked mark, one quiet line --- */
 .today-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding-block: var(--space-20);
   color: var(--text-tertiary);
-  text-align: center;
-  padding: var(--space-16) 0;
+}
+.today-empty p {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.today-empty-ring {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border-color-strong);
 }
 
+/* --- done trail --- */
 .today-done {
-  margin-top: var(--space-6);
+  margin-block-start: var(--space-10);
+  border-block-start: 1px solid var(--border-color);
+  padding-block-start: var(--space-3);
 }
 .today-done-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: var(--text-xs);
-  color: var(--text-tertiary);
-  margin-bottom: var(--space-1);
+  margin-block-end: var(--space-1);
 }
-
-.today-suggestions {
-  width: 260px;
-  flex-shrink: 0;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: var(--space-3);
-}
-.today-suggestions-title {
+.today-done-count {
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
   text-transform: uppercase;
   letter-spacing: var(--tracking-caps);
   color: var(--text-tertiary);
-  margin: 0 0 var(--space-2);
-  text-align: start;
+}
+
+/* --- morning suggestions: a small card in the margin --- */
+.today-suggestions {
+  width: 272px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+  padding: var(--space-4) var(--space-4) var(--space-2);
+}
+.today-suggestions-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  margin: 0;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-tertiary);
+}
+.today-suggestions-title .icon {
+  width: 13px;
+  height: 13px;
 }
 .today-suggestion {
-  padding: var(--space-2);
-  border-radius: var(--radius-sm);
+  padding-block: var(--space-3);
 }
-.today-suggestion:hover {
-  background: var(--surface-sunken);
+.today-suggestion + .today-suggestion {
+  border-block-start: 1px solid var(--border-color);
 }
 .today-suggestion-title {
   display: block;
   font-size: var(--text-sm);
+  line-height: var(--leading-snug);
   text-align: start;
 }
 .today-suggestion-actions {
-  margin-top: var(--space-1);
+  display: flex;
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+}
+
+/* accept / dismiss: small drawn chips, clicky on press */
+.suggestion-accept,
+.suggestion-dismiss {
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+.suggestion-accept {
+  border: 1px solid var(--color-accent-muted);
+  color: var(--color-accent-dark);
+}
+.suggestion-accept:hover {
+  background: var(--color-accent-subtle);
+  border-color: var(--color-accent);
+}
+[data-theme='dark'] .suggestion-accept {
+  color: var(--color-accent);
+}
+.suggestion-dismiss {
+  border: 1px solid transparent;
+  color: var(--text-tertiary);
+}
+.suggestion-dismiss:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-color);
 }
 
 @media (max-width: 768px) {
-  .today {
+  .today-header {
+    margin-block-end: var(--space-5);
+  }
+  .today-body {
     flex-direction: column;
   }
   .today-suggestions {

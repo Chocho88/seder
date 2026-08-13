@@ -1,103 +1,295 @@
+/* Cmd+K omni-bar — a calm floating capture window (Things quick-entry chrome).
+   Tokens only; logical properties only. One settle animation on open, nothing ambient.
+
+   Alignment rhythm: input text, match titles and the destination name all start
+   at the same inline offset (20px pad + 20px glyph box + 12px gap = 52px). */
+
 .capture-overlay {
   position: fixed;
   inset: 0;
   z-index: var(--z-modal);
   background: var(--surface-overlay);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 18vh;
+  padding-block-start: 16vh;
+  padding-inline: var(--space-4);
 }
 
 .capture {
-  width: min(560px, 92vw);
+  width: min(600px, 100%);
   background: var(--surface-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-xl);
+  /* clean-preset shadows are whisper-quiet; stack three for floating chrome */
+  box-shadow: var(--shadow-xl), var(--shadow-lg), var(--shadow-md);
   overflow: hidden;
 }
+[data-theme='dark'] .capture {
+  border-color: var(--border-color-strong);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .capture-overlay {
+    animation: capture-fade var(--duration-fast) var(--ease-out) both;
+  }
+  .capture {
+    animation: capture-settle var(--duration-normal) var(--ease-out) both;
+  }
+}
+@keyframes capture-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes capture-settle {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+  }
+}
+
+/* --- Input row --- */
 
 .capture-inputrow {
   display: flex;
   align-items: center;
+  gap: var(--space-3);
+  padding-inline: var(--space-5);
+}
+
+.capture-lead {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
 }
 
 .capture-input {
   flex: 1;
+  min-width: 0;
   border: none;
   background: transparent;
-  padding: var(--space-4) var(--space-5);
+  padding-block: var(--space-5);
+  padding-inline: 0;
   font-size: var(--text-lg);
   font-family: var(--font-body);
   color: var(--text-primary);
+  caret-color: var(--color-accent);
   outline: none;
+}
+.capture-input:focus,
+.capture-input:focus-visible {
+  /* the floating window itself is the focus signal — no ring inside it */
+  outline: none;
+  box-shadow: none;
 }
 .capture-input::placeholder {
   color: var(--text-tertiary);
+  opacity: 1;
 }
 
 .capture-mic {
-  border: none;
+  width: 34px;
+  height: 34px;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--text-tertiary);
   cursor: pointer;
-  padding: var(--space-3);
-  margin-inline-end: var(--space-2);
   border-radius: var(--radius-md);
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 .capture-mic:hover {
-  color: var(--text-primary);
+  color: var(--text-secondary);
+  border-color: var(--border-color);
   background: var(--surface-sunken);
+  box-shadow: var(--press-shadow);
 }
 .capture-mic.listening {
   color: var(--color-accent);
-  animation: mic-pulse 1.2s ease-in-out infinite;
+  border-color: var(--color-accent-muted);
+  background: var(--color-accent-subtle);
+}
+.capture-mic.listening .icon {
+  animation: mic-pulse 1.4s var(--ease-in-out) infinite;
 }
 @keyframes mic-pulse {
   50% {
-    opacity: 0.5;
+    opacity: 0.45;
   }
 }
 
-.capture-preview {
+/* --- Search matches --- */
+
+.capture-matches {
+  border-block-start: 1px solid var(--border-color);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-px);
+}
+
+.capture-match {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: start;
+}
+.capture-match.is-selected {
+  background: var(--surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--border-color);
+}
+.capture-match:active {
+  transform: translateY(var(--press-translate));
+}
+
+/* dot sits centered in a 20px glyph box so titles align with the input text
+   (the footer chip spaces its own dot via padding instead) */
+.capture-match .cat-dot {
+  margin-inline: var(--space-1-5);
+}
+
+.capture-match-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.capture-match-cat {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* --- Footer: live parse destination + return hint --- */
+
+.capture-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 40px;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-5);
+  border-block-start: 1px solid var(--border-color);
+  background: var(--surface-sunken);
+}
+
+.capture-dest {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-5);
-  border-top: 1px solid var(--border-color);
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
+  min-width: 0;
 }
+
+/* The one piece of live state in the footer: a drawn, category-tinted pill.
+   A container + the category wash separates "where this goes" from the static
+   keycap hints without adding any weight the eye must fight. */
+.capture-dest-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  height: 24px;
+  padding-inline: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+  background: var(--cat-tint, var(--surface-card));
+  /* border drawn from the category color itself, kept whisper-level */
+  border: 1px solid color-mix(in srgb, var(--cat-color, var(--border-color)) 28%, transparent);
+  border-radius: var(--radius-full);
+}
+
+.capture-dest-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .capture-today-flag {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 24px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  line-height: 1;
   color: var(--color-accent-dark);
   background: var(--color-accent-subtle);
+  border: 1px solid var(--color-accent-muted);
   border-radius: var(--radius-full);
-  padding: 1px var(--space-2);
+  padding-block: 0;
+  padding-inline: var(--space-3);
 }
 [data-theme='dark'] .capture-today-flag {
   color: var(--color-accent);
 }
 
-.capture-matches {
-  border-top: 1px solid var(--border-color);
-  padding: var(--space-1);
+.capture-hints {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
 }
-.capture-match {
-  display: block;
-  width: 100%;
-  text-align: start;
-  border: none;
+
+/* Hints are the most ignorable text in the window: one type size below the
+   smallest token (no sub-xs token exists) and one gray step below the
+   placeholder's tertiary, so they never compete with the field or the chip. */
+.capture-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  flex-shrink: 0;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-disabled);
+}
+
+/* #/! syntax tokens: guidance for the resting state. Once the user is typing
+   the live parse in the footer takes over, so they recede (opacity only — no
+   layout shift, no motion). */
+.capture-hint-syntax {
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+.capture-hint-syntax.is-quiet {
+  opacity: 0.35;
+}
+
+/* One keycap family: every cap shares the same fixed box (min 18px wide,
+   18px tall), radius and border; the glyph is flex-centered inside it so #,
+   ! and ↵ read as siblings. Caps are static guidance, not controls, so no
+   press-shadow (clickiness is reserved for interactive elements) and no card
+   fill — a hairline outline is all the drawing they earn. The glyph sits one
+   gray step above its label: it is the thing you actually type. */
+.capture-kbd {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding-block: 0;
+  padding-inline: var(--space-1);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-tertiary);
   background: transparent;
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--text-sm);
-  font-family: var(--font-body);
-  color: var(--text-secondary);
-  cursor: pointer;
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-}
-.capture-match:hover {
-  background: var(--surface-sunken);
-  color: var(--text-primary);
 }

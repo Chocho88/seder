@@ -1,11 +1,25 @@
+/* ============================================
+   ItemRow — the atom of the app.
+   Craft rules:
+   - two type levels, everywhere: title (14px, primary) and
+     metadata (11px, tertiary, one numeric voice on the title's
+     baseline). Nothing in between.
+   - checkbox, title and signals are ONE group: the cluster docks
+     8px off the title's edge; the row's far side is whitespace,
+     never a gutter the eye must cross.
+   - nothing saturated at rest; color is a whisper
+   - reveals (verb icon) happen on interaction only
+   - the checkbox is drawn, not defaulted
+   ============================================ */
+
 .item-row {
   display: flex;
   align-items: center;
-  gap: var(--space-2-5, 0.625rem);
+  gap: var(--space-3);
   padding: var(--space-1-5) var(--space-2);
+  min-height: 34px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  min-height: 32px;
 }
 .item-row:hover {
   background: var(--surface-sunken);
@@ -14,10 +28,12 @@
   background: var(--color-accent-subtle);
 }
 
+/* --- Checkbox: drawn rounded-rect, generous hidden hit area --- */
 .item-check {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
   border: 1.5px solid var(--border-color-strong);
   background: transparent;
   cursor: pointer;
@@ -26,103 +42,231 @@
   align-items: center;
   justify-content: center;
   padding: 0;
+  color: var(--color-white);
   transition:
     background var(--duration-fast) var(--ease-default),
-    border-color var(--duration-fast) var(--ease-default);
+    border-color var(--duration-fast) var(--ease-default),
+    transform var(--duration-fast) var(--ease-default);
+}
+/* invisible hit target — ~34px square without touching layout */
+.item-check::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
 }
 .item-check:hover {
   border-color: var(--color-accent);
+  background: var(--color-accent-subtle);
+}
+.item-check:active {
+  transform: scale(0.88);
+}
+.item-check:focus-visible {
+  outline: none;
+  /* accent ring: the preset's neutral ring disappears on dark cards */
+  box-shadow:
+    0 0 0 2px var(--surface-card),
+    0 0 0 4px var(--color-accent);
 }
 .item-check.checked {
   background: var(--color-accent);
   border-color: var(--color-accent);
 }
-.item-check .icon {
-  width: 11px;
-  height: 11px;
-  color: var(--color-white);
-  stroke-width: 3;
+/* the check is a drawn path that draws itself in on toggle */
+.item-check .check-draw {
+  width: 12px;
+  height: 12px;
+  display: block;
+}
+.item-check .check-draw path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 11;
+  stroke-dashoffset: 11;
+  opacity: 0;
+  transition:
+    stroke-dashoffset var(--duration-normal) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-default);
+}
+.item-check.checked .check-draw path {
+  stroke-dashoffset: 0;
+  opacity: 1;
+}
+/* waiting items: the box itself says "not yours right now" */
+.item-wait .item-check {
+  border-style: dashed;
 }
 
+/* --- Note mark: two quiet text-lines, drawn --- */
 .item-note-mark {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
   position: relative;
 }
+.item-note-mark::before,
 .item-note-mark::after {
   content: '';
   position: absolute;
-  inset: 6px 5px;
-  border-top: 1.5px solid var(--text-tertiary);
-  border-bottom: 1.5px solid var(--text-tertiary);
+  inset-inline-start: 3px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--text-tertiary);
+  opacity: 0.8;
+}
+.item-note-mark::before {
+  top: 6px;
+  width: 12px;
+}
+.item-note-mark::after {
+  top: 10.5px;
+  width: 8px;
 }
 
+/* --- Title: type level one — the only full-strength thing in the row.
+   Shrink-to-fit: the title owns exactly its own width so the signal
+   cluster can dock against its edge; long titles still ellipse because
+   the cluster refuses to shrink. --- */
 .item-title {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
   line-height: var(--leading-snug);
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: start;
 }
+/* Anchor every title to the checkbox edge, whatever its script.
+   The dir attr bidi-isolates the text, but it also flips what "start"
+   means inside the span — so when a shrunk-to-fit counter-direction
+   title ellipses, its text would hug the wrong edge and sever the
+   checkbox–label pairing. When the title's direction opposes the
+   row's, its own "end" IS the row's start — align there. */
+.item-row:dir(rtl) .item-title[dir='ltr'],
+.item-row:dir(ltr) .item-title[dir='rtl'] {
+  text-align: end;
+}
 
+/* --- Signals: type level two — small, tertiary, earned.
+   The cluster is the title's satellite: the row's 12px gap is the
+   checkbox contract, so pull the cluster back to a tighter 8px.
+   Everything after it is open whitespace, on purpose. --- */
 .item-signals {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   flex-shrink: 0;
   color: var(--text-tertiary);
+  margin-inline-start: calc(-1 * var(--space-1));
 }
 
-.item-age {
-  font-family: var(--font-data);
-  font-size: 10px;
-  color: var(--color-warning);
+/* the glyph run — fixed inside→out order (pin · count · urgent ·
+   important · verb) so a mark always means the same thing in the
+   same place, docked, with no reserved emptiness between title
+   and glyphs */
+.item-rail {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
 }
 
+/* who/what a wait item is stuck on — reads as a continuation of the title */
 .item-waiting {
   font-size: var(--text-xs);
-  max-width: 120px;
+  color: var(--text-tertiary);
+  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* numerals: one family, one size, one color — locked onto the
+   title's baseline, not floated on the row centerline (14px/1.35
+   title vs 11px/1 numeral centers differ; the 1px drop closes the
+   optical gap). UI face: the data font has no Hebrew glyphs, so
+   the day mark would fall back mid-signal and read as an artifact. */
+.item-age,
+.item-kidcount {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  position: relative;
+  inset-block-start: 1px;
+}
+
+/* rollover age — the one quiet alarm */
+.item-age {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1.5px;
+  font-weight: var(--weight-medium);
+  color: var(--color-warning);
+}
+
+/* sub-item progress */
+.item-kidcount {
+  color: var(--text-tertiary);
+}
+
+/* verb chip icon — hidden at rest, revealed by the hand; it keeps a
+   reserved 12px slot at the cluster's outer end (facing whitespace)
+   so the docked glyphs never shift under the cursor */
+.item-verb {
+  display: inline-flex;
+  width: 12px;
+  justify-content: center;
+  color: var(--text-tertiary);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-default);
+}
+.item-row:hover .item-verb,
+.item-row.item-open .item-verb {
+  opacity: 1;
+}
+@media (hover: none) {
+  .item-verb {
+    opacity: 1;
+  }
+}
 .item-verb .icon {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
   display: block;
 }
 
-.item-pin {
+/* flag vocabulary: one 6px optical box — dot = urgent, rotated
+   square = important, ring = pinned */
+.flag-urgent {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
-  background: var(--color-accent);
-}
-
-.item-flags {
-  display: inline-flex;
-  gap: 3px;
-}
-.flag-urgent,
-.flag-important {
-  width: 5px;
-  height: 10px;
-  border-radius: 2px;
-  display: inline-block;
-}
-.flag-urgent {
+  border-radius: var(--radius-full);
   background: var(--color-warning);
+  display: inline-block;
+  flex-shrink: 0;
 }
 .flag-important {
-  background: var(--text-secondary);
+  width: 6px;
+  height: 6px;
+  border-radius: 1.5px;
+  background: var(--text-tertiary);
+  transform: rotate(45deg) scale(0.85);
+  display: inline-block;
+  flex-shrink: 0;
 }
-
-.item-kidcount {
-  font-family: var(--font-data);
-  font-size: 10px;
+.item-pin {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-accent);
+  box-sizing: border-box;
+  flex-shrink: 0;
 }

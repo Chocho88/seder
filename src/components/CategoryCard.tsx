@@ -35,6 +35,7 @@ export default function CategoryCard({ category }: { category: Category }) {
         {open.map((i) => (
           <ItemRow key={i.id} item={i} />
         ))}
+        {done.length > 0 && open.length > 0 && <div className="category-card-donesep" aria-hidden />}
         {done.map((i) => (
           <ItemRow key={i.id} item={i} />
         ))}

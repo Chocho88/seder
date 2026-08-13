@@ -4,21 +4,39 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import icons from '../../../design-system/icons.svg';
 import { useSeder } from '../lib/store';
-import { t } from '../lib/i18n';
+import { useLang } from '../lib/i18n';
 import { dirProps } from '../lib/rtl';
 import './capture.css';
 
+// Footer syntax-hint labels (chrome strings local to this bar; the shared
+// dictionary keeps the long-form placeholder for other surfaces).
+const HINT_LABELS = {
+  list: { en: 'list', he: 'רשימה' },
+  today: { en: 'today', he: 'להיום' },
+} as const;
+
 export default function CaptureBar() {
   const { captureOpen, setCaptureOpen, categories, items, addItem, openItem } = useSeder();
+  const [lang, t] = useLang();
+  // Resting state stays a three-word invitation; the #/! cheat-sheet lives in
+  // the footer as keycap tokens, so strip the parenthetical from the dict string.
+  const placeholder = t('capture_placeholder').replace(/\s*\(.*?\)\s*$/u, '');
   const [text, setText] = useState('');
+  const [sel, setSel] = useState(-1); // keyboard selection in matches; -1 = capture
   const [listening, setListening] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const recRef = useRef<any>(null);
+
+  // ?capture=1 → open on load (deep links, screenshot rigs)
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('capture') === '1') setCaptureOpen(true);
+  }, [setCaptureOpen]);
 
   useEffect(() => {
     if (captureOpen) inputRef.current?.focus();
     else {
       setText('');
+      setSel(-1);
       recRef.current?.stop?.();
       setListening(false);
     }
@@ -50,9 +68,16 @@ export default function CaptureBar() {
     return items.filter((i) => !i.done && i.title.toLowerCase().includes(q)).slice(0, 5);
   }, [text, items]);
 
+  const catOf = (id: string) => categories.find((c) => c.id === id);
+
   const submit = async () => {
     if (!parsed.title || !parsed.category) return;
     await addItem({ title: parsed.title, categoryId: parsed.category.id, today: parsed.today });
+    setCaptureOpen(false);
+  };
+
+  const openMatch = (id: string) => {
+    openItem(id);
     setCaptureOpen(false);
   };
 
@@ -83,50 +108,116 @@ export default function CaptureBar() {
 
   return (
     <div className="capture-overlay" onClick={() => setCaptureOpen(false)}>
-      <div className="capture" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="capture"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('search_or_add')}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="capture-inputrow">
+          <svg className="icon icon-md capture-lead" aria-hidden="true">
+            <use href={`${icons}#icon-plus`} />
+          </svg>
           <input
             ref={inputRef}
             className="capture-input"
-            placeholder={t('capture_placeholder')}
+            placeholder={placeholder}
             value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') void submit();
-              if (e.key === 'Escape') setCaptureOpen(false);
+            onChange={(e) => {
+              setText(e.target.value);
+              setSel(-1);
             }}
-            {...dirProps(text || t('capture_placeholder'))}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown' && matches.length > 0) {
+                e.preventDefault();
+                setSel((s) => (s + 1) % matches.length);
+              } else if (e.key === 'ArrowUp' && matches.length > 0) {
+                e.preventDefault();
+                setSel((s) => (s <= 0 ? matches.length - 1 : s - 1));
+              } else if (e.key === 'Enter') {
+                if (sel >= 0 && matches[sel]) openMatch(matches[sel].id);
+                else void submit();
+              } else if (e.key === 'Escape') {
+                setCaptureOpen(false);
+              }
+            }}
+            {...dirProps(text || placeholder)}
           />
-          <button className={`capture-mic ${listening ? 'listening' : ''}`} aria-label="Dictate" onClick={dictate}>
+          <button
+            className={`capture-mic pressable ${listening ? 'listening' : ''}`}
+            aria-label="Dictate"
+            aria-pressed={listening}
+            onClick={dictate}
+          >
             <svg className="icon icon-md">
               <use href={`${icons}#icon-mic`} />
             </svg>
           </button>
         </div>
-        {parsed.title && (
-          <div className="capture-preview">
-            <span className="cat-dot" data-cat={parsed.category?.colorKey} style={{ background: `var(--cat-${parsed.category?.colorKey})` }} />
-            <span>{parsed.category?.name}</span>
+
+        {matches.length > 0 && (
+          <div className="capture-matches" role="listbox">
+            {matches.map((m, i) => {
+              const cat = catOf(m.categoryId);
+              return (
+                <button
+                  key={m.id}
+                  role="option"
+                  aria-selected={i === sel}
+                  className={`capture-match ${i === sel ? 'is-selected' : ''}`}
+                  onClick={() => openMatch(m.id)}
+                  onMouseEnter={() => setSel(i)}
+                >
+                  <span className="cat-dot" data-cat={cat?.colorKey} />
+                  <span className="capture-match-title" {...dirProps(m.title)}>
+                    {m.title}
+                  </span>
+                  {cat && (
+                    <span className="capture-match-cat" {...dirProps(cat.name)}>
+                      {cat.name}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="capture-footer">
+          <div className="capture-dest">
+            {/* Live state gets a drawn container (category-tinted pill) so it
+                reads a clear step above the static keyboard hints. data-cat on
+                the chip supplies --cat-color/--cat-tint to itself and the dot. */}
+            <span className="capture-dest-chip" data-cat={parsed.category?.colorKey}>
+              <span className="cat-dot" />
+              <span className="capture-dest-name" {...dirProps(parsed.category?.name ?? '')}>
+                {parsed.category?.name}
+              </span>
+            </span>
             {parsed.today && <span className="capture-today-flag">{t('today_flag')}</span>}
           </div>
-        )}
-        {matches.length > 0 && (
-          <div className="capture-matches">
-            {matches.map((m) => (
-              <button
-                key={m.id}
-                className="capture-match"
-                onClick={() => {
-                  openItem(m.id);
-                  setCaptureOpen(false);
-                }}
-                {...dirProps(m.title)}
-              >
-                {m.title}
-              </button>
-            ))}
+          <div className="capture-hints">
+            <span
+              className={`capture-hint capture-hint-syntax ${text ? 'is-quiet' : ''}`}
+              aria-hidden="true"
+            >
+              <kbd className="capture-kbd">#</kbd>
+              <span>{HINT_LABELS.list[lang]}</span>
+            </span>
+            <span
+              className={`capture-hint capture-hint-syntax ${text ? 'is-quiet' : ''}`}
+              aria-hidden="true"
+            >
+              <kbd className="capture-kbd">!</kbd>
+              <span>{HINT_LABELS.today[lang]}</span>
+            </span>
+            <span className="capture-hint">
+              <kbd className="capture-kbd">↵</kbd>
+              <span>{t('add_item')}</span>
+            </span>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

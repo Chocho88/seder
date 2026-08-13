@@ -73,7 +73,14 @@ export const useSeder = create<SederState>((set, get) => ({
   async init() {
     await seedIfEmpty(wantsFreshSeed());
     const data = await loadAll();
-    const open = initialOpenItem();
+    let open = initialOpenItem();
+    // ?open=first → deterministically open the first rich item (screenshots/tests)
+    if (open === 'first') {
+      const first = data.items
+        .filter((i) => i.parentId === null)
+        .sort((a, b) => a.order - b.order)[0];
+      open = first?.id ?? null;
+    }
     set({ ...data, ready: true, openItemId: open });
   },
 

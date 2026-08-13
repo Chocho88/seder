@@ -1,3 +1,10 @@
+/* ============================================
+   Detail panel — the item, unfolded.
+   One field language: borderless rows on a single text column,
+   separated by consistent inset hairlines. One mark gutter
+   (18px + gap) keeps every line of text on the same start edge.
+   ============================================ */
+
 .detail-scrim {
   position: fixed;
   inset: 0;
@@ -5,168 +12,449 @@
   background: transparent;
 }
 
+/* Floating card, not a wall: the board stays visible around it.
+   The card hugs its content — exactly as deep as the item is (progressive
+   depth), growing and then scrolling only when the item earns it. */
 .detail-panel {
   position: fixed;
-  top: 0;
-  inset-inline-end: 0;
-  bottom: 0;
+  inset-block-start: var(--space-3);
+  inset-inline-end: var(--space-3);
+  max-block-size: calc(100dvh - 2 * var(--space-3));
   width: var(--detail-panel-width);
-  max-width: 92vw;
+  max-width: calc(100vw - var(--space-6));
   z-index: var(--z-modal);
-  background: var(--surface-card);
-  border-inline-start: 1px solid var(--border-color);
-  box-shadow: var(--shadow-xl);
-  padding: var(--space-4) var(--space-5);
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  background: var(--surface-card);
+  border: var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    var(--shadow-xl),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  /* the shared mark gutter: an 18px mark + the row gap */
+  --detail-gutter: calc(18px + var(--space-3));
+  /* every field boundary speaks with this exact voice */
+  --detail-hairline: 1px solid var(--border-color);
 }
 
 @media (max-width: 768px) {
   .detail-panel {
+    inset: 0;
     width: 100%;
     max-width: 100%;
-    border-inline-start: none;
+    max-block-size: none;
+    border: none;
+    border-radius: 0;
   }
 }
 
+/* --- Header: quiet breadcrumb + close --- */
 .detail-header {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  padding: var(--space-4) var(--space-6) 0;
+}
+.detail-header .cat-dot {
+  width: 6px;
+  height: 6px;
 }
 .detail-category {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
   flex: 1;
-  text-align: start;
-}
-.detail-state {
+  min-width: 0;
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  text-align: start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.detail-close {
+  width: 28px;
+  height: 28px;
+  margin-inline-end: calc(-1 * var(--space-2));
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+.detail-close:hover {
   background: var(--surface-sunken);
   color: var(--text-secondary);
 }
-.detail-state-do {
-  background: var(--color-accent-subtle);
-  color: var(--color-accent-dark);
-}
-[data-theme='dark'] .detail-state-do {
-  color: var(--color-accent);
+
+/* --- Body: the reading column --- */
+.detail-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-6) var(--space-4);
 }
 
+/* --- Title row: done-check in the gutter, large seamless text --- */
+.detail-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding-block: var(--space-3) var(--space-4);
+}
+/* optically centered on the title's first line (27px cap line, 18px mark) */
+.detail-title-row .item-check,
+.detail-title-row .item-note-mark {
+  margin-block-start: 4px;
+}
 .detail-title {
+  flex: 1;
+  min-width: 0;
+  display: block;
   border: none;
   background: transparent;
+  padding: 0;
+  margin: 0;
   font-family: var(--font-heading);
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-snug);
   color: var(--text-primary);
   resize: none;
   outline: none;
-  line-height: var(--leading-snug);
-  padding: 0;
+  overflow: hidden;
+  field-sizing: content;
 }
-
-.detail-label {
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-caps);
+.detail-title.done {
+  text-decoration: line-through;
   color: var(--text-tertiary);
-  margin-top: var(--space-3);
-  text-align: start;
 }
 
-.detail-nextmove {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-sm);
+/* Opposite-direction content keeps the column edge (same contract as the
+   board rows): an LTR title in the RTL panel still hugs its mark. Per-line
+   direction itself comes from dirProps() — never removed. */
+.detail-panel:dir(rtl) .detail-title[dir='ltr'],
+.detail-panel:dir(ltr) .detail-title[dir='rtl'],
+.detail-panel:dir(rtl) .detail-move-input[dir='ltr'],
+.detail-panel:dir(ltr) .detail-move-input[dir='rtl'],
+.detail-panel:dir(rtl) .detail-notes[dir='ltr'],
+.detail-panel:dir(ltr) .detail-notes[dir='rtl'],
+.detail-panel:dir(rtl) .detail-subitem-add[dir='ltr'],
+.detail-panel:dir(ltr) .detail-subitem-add[dir='rtl'] {
+  text-align: end;
+}
+
+/* --- Next move: a borderless row like every other field --- */
+.detail-move {
+  border-block-start: var(--detail-hairline);
+}
+.detail-move-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+  min-height: 44px;
+}
+.detail-move-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
   font-family: var(--font-body);
-  background: var(--input-bg);
+  font-size: var(--text-sm);
   color: var(--text-primary);
   outline: none;
-}
-.detail-nextmove:focus {
-  border-color: var(--color-accent);
-}
-
-.detail-waiting {
-  font-size: var(--text-xs);
-  color: var(--text-secondary);
-  margin: var(--space-1) 0 0;
   text-align: start;
 }
 
-.detail-toggles {
+/* State glyph: drawn, not defaulted — same 18px slot as the checkboxes.
+   do = open emerald ring (actionable) · wait = pause bars · shape = dashed ring */
+.detail-move-glyph {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.detail-move[data-state='do'] .detail-move-glyph {
+  border: 1.5px solid var(--color-accent);
+  border-radius: var(--radius-full);
+}
+.detail-move[data-state='shape'] .detail-move-glyph {
+  border: 1.5px dashed var(--text-tertiary);
+  border-radius: var(--radius-full);
+}
+.detail-move[data-state='wait'] .detail-move-glyph::before,
+.detail-move[data-state='wait'] .detail-move-glyph::after {
+  content: '';
+  position: absolute;
+  inset-block: 3.5px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--text-tertiary);
+}
+.detail-move[data-state='wait'] .detail-move-glyph::before {
+  inset-inline-start: 4.5px;
+}
+.detail-move[data-state='wait'] .detail-move-glyph::after {
+  inset-inline-end: 4.5px;
+}
+
+/* Derived state, spoken quietly at the row's end — the glyph carries the
+   color; the word stays in tertiary ink so it never competes with content. */
+.detail-move-state {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-tertiary);
+}
+.detail-move[data-state='wait'] .detail-move-state {
+  color: var(--text-secondary);
+}
+
+/* "Waiting for X" — aligned to the shared text column */
+.detail-waiting {
+  margin: 0;
+  margin-block-start: calc(-1 * var(--space-1));
+  margin-inline-start: var(--detail-gutter);
+  padding-block-end: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  text-align: start;
+}
+.detail-waiting b {
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+}
+
+/* --- Notes: quiet body text on the same column ---
+   Empty = a single placeholder row, same voice and gray as the add-item row
+   below; the field earns its height only once content exists. */
+.detail-notes-row {
+  border-block-start: var(--detail-hairline);
+  padding-block: var(--space-3);
+  padding-inline-start: var(--detail-gutter);
+  min-height: 44px;
   display: flex;
+  align-items: center;
+}
+.detail-notes {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  resize: none;
+  outline: none;
+  overflow: hidden;
+  field-sizing: content;
+  min-height: 1lh;
+  text-align: start;
+}
+
+/* Hover firms up the quiet invitations — affordance without chrome.
+   Notes, next-move and the add-row speak with one voice. */
+.detail-notes::placeholder,
+.detail-move-input::placeholder,
+.detail-subitem-add::placeholder {
+  transition: color var(--duration-fast) var(--ease-default);
+}
+.detail-notes-row:hover .detail-notes:placeholder-shown::placeholder,
+.detail-move-row:hover .detail-move-input:placeholder-shown::placeholder,
+.detail-subitem-addrow:hover .detail-subitem-add::placeholder {
+  color: var(--text-secondary);
+}
+
+/* Text fields carry no ring of their own — the caret is the focus cue.
+   Buttons keep the base ring. */
+.detail-title:focus-visible,
+.detail-notes:focus-visible,
+.detail-move-input:focus-visible,
+.detail-subitem-add:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+
+.detail-title::placeholder,
+.detail-notes::placeholder,
+.detail-move-input::placeholder,
+.detail-subitem-add::placeholder {
+  color: var(--text-tertiary);
+  opacity: 1;
+}
+
+/* --- Sub-items: hairline checklist on the same column --- */
+.detail-subitems {
+  border-block-start: var(--detail-hairline);
+}
+.detail-subitems .item-row {
+  border-radius: 0;
+  padding: var(--space-2) 0;
+  min-height: 40px;
+}
+.detail-subitems .item-row + .item-row {
+  border-block-start: var(--detail-hairline);
+}
+.detail-subitems .item-row + .detail-subitem-addrow {
+  border-block-start: var(--detail-hairline);
+}
+
+.detail-subitem-addrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  min-height: 40px;
+}
+.detail-subitem-plus {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: var(--text-tertiary);
+  transition: color var(--duration-fast) var(--ease-default);
+}
+.detail-subitem-addrow:hover .detail-subitem-plus {
+  color: var(--text-secondary);
+}
+.detail-subitem-plus .icon {
+  width: 12px;
+  height: 12px;
+}
+.detail-subitem-add {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  outline: none;
+  text-align: start;
+}
+
+/* --- Footer: properties at the bottom edge ---
+   The divider is the same inset hairline as every field boundary. */
+.detail-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline: var(--space-6);
+  padding-block: var(--space-3);
+  border-block-start: var(--detail-hairline);
+}
+/* Toggles are crisp hairline pills — clickable at a glance, quiet in ink.
+   A set property fills into a soft chip that speaks the app's row-flag
+   vocabulary (dot = urgent, diamond = important, ring = pinned); only
+   "today" earns the accent, borrowed exactly from the capture bar's
+   today-chip. Green lives here at most once, and only because the user
+   put it there. */
+.detail-toggles {
+  flex: 1;
+  display: flex;
+  align-items: center;
   gap: var(--space-1-5);
   flex-wrap: wrap;
-  margin-top: var(--space-2);
 }
 .detail-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
   border: 1px solid var(--border-color);
   background: transparent;
   border-radius: var(--radius-full);
-  padding: var(--space-1) var(--space-3);
-  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
   font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  line-height: 1.2;
   color: var(--text-secondary);
   cursor: pointer;
   transition:
+    transform var(--duration-fast) var(--ease-default),
     background var(--duration-fast) var(--ease-default),
     color var(--duration-fast) var(--ease-default),
     border-color var(--duration-fast) var(--ease-default);
 }
 .detail-toggle:hover {
-  border-color: var(--text-tertiary);
+  border-color: var(--border-color-strong);
+  background: var(--surface-sunken);
+  color: var(--text-primary);
 }
-.detail-toggle.on {
+
+/* On: a quiet ink chip… */
+.detail-toggle.on,
+.detail-toggle.on:hover {
+  background: var(--surface-sunken);
+  border-color: var(--border-color-strong);
+  color: var(--text-primary);
+}
+/* …except today, the one accent allowed in the footer. */
+.detail-toggle--today.on,
+.detail-toggle--today.on:hover {
   background: var(--color-accent-subtle);
-  border-color: var(--color-accent);
+  border-color: var(--color-accent-muted);
   color: var(--color-accent-dark);
 }
-[data-theme='dark'] .detail-toggle.on {
+[data-theme='dark'] .detail-toggle--today.on,
+[data-theme='dark'] .detail-toggle--today.on:hover {
   color: var(--color-accent);
 }
 
-.detail-notes {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--text-sm);
-  font-family: var(--font-body);
-  background: var(--input-bg);
-  color: var(--text-primary);
-  resize: vertical;
-  outline: none;
-  line-height: var(--leading-normal);
+/* Set chips carry their row-flag glyph — same mark the board rows wear */
+.detail-toggle.on::before {
+  content: '';
+  flex-shrink: 0;
+}
+.detail-toggle--urgent.on::before {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-warning);
+}
+.detail-toggle--important.on::before {
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--text-secondary);
+  transform: rotate(45deg);
+}
+.detail-toggle--pin.on::before {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  border: 1.5px solid var(--color-accent);
+  box-sizing: border-box;
+}
+/* today's chip is its own mark — no glyph */
+.detail-toggle--today.on::before {
+  content: none;
 }
 
-.detail-subitem-add {
-  width: 100%;
+.detail-delete {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  /* icon optically flush with the panel's end edge, like the close button */
+  margin-inline-end: calc(-1 * var(--space-2));
+  display: grid;
+  place-items: center;
   border: none;
+  border-radius: var(--radius-sm);
   background: transparent;
-  padding: var(--space-1-5) var(--space-2);
-  font-size: var(--text-sm);
-  font-family: var(--font-body);
-  color: var(--text-primary);
-  outline: none;
-}
-.detail-subitem-add::placeholder {
   color: var(--text-tertiary);
-}
-
-.detail-footer {
-  margin-top: auto;
-  padding-top: var(--space-4);
-  display: flex;
-  justify-content: flex-end;
+  cursor: pointer;
 }
 .detail-delete:hover {
+  background: var(--surface-sunken);
   color: var(--color-error);
 }

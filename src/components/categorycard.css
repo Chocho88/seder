@@ -1,30 +1,66 @@
+/* Category card interior. Alignment contract:
+   rows: 16px card inset + 18px checkbox + 12px gap → titles start at 46px,
+   checkbox centers at 25px. The header reproduces both lines exactly:
+   dot slot 5+8+5 = 18px (center 25px), gap 12px (title 46px), and the
+   count ends on the same 16px inline-end inset as the row metadata slot. */
+
 .category-card-header {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-2-5, 0.625rem);
+  border-block-end: 1px solid var(--border-color);
+}
+.category-card-header .cat-dot {
+  /* 8px dot centered in an 18px slot = aligned with checkbox centers below */
+  margin-inline: 5px;
 }
 .category-card-title {
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-tight);
   margin: 0;
-  flex: 1;
+  /* shrink-to-fit so the count docks against the title —
+     dot · title · count is one group, same law as the rows */
+  flex: 0 1 auto;
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   text-align: start;
 }
 .category-card-count {
-  font-family: var(--font-data);
-  font-size: var(--text-xs);
+  /* same numeral voice as the row metadata slot: 11px, tabular, tertiary */
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
   color: var(--text-tertiary);
+  /* header gap is 12px (the dot contract); tighten the count to
+     the title's 8px satellite distance, dropped onto its baseline */
+  margin-inline-start: calc(-1 * var(--space-1));
+  position: relative;
+  inset-block-start: 1px;
 }
+
 .category-card-body {
-  padding: 0 var(--space-2) var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-2-5, 0.625rem);
 }
+
+/* Breathing room between open and done rows */
+.category-card-donesep {
+  height: var(--space-1);
+}
+
+/* Inline add: invisible until wanted; text aligns with row titles */
 .category-card-add {
   width: 100%;
   border: none;
   background: transparent;
   padding: var(--space-1-5) var(--space-2);
+  padding-inline-start: calc(var(--space-2) + 18px + var(--space-3));
   font-size: var(--text-sm);
   font-family: var(--font-body);
   color: var(--text-primary);

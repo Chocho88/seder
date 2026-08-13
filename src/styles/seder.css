@@ -3,7 +3,18 @@
    Obsidian-calm, PostHog-clicky. Black/white + emerald.
    ============================================ */
 
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap');
+
 :root {
+  /* Typography (user-specified):
+     EN UI/body = Rubik; HE UI/body = Noto Sans Hebrew (preset default);
+     the סדר wordmark = Migdal Haemeq (registered in design-system base.css) */
+  --font-display: 'Rubik', -apple-system, sans-serif;
+  --font-heading: 'Rubik', -apple-system, sans-serif;
+  --font-body: 'Rubik', -apple-system, sans-serif;
+  --font-ui: 'Rubik', -apple-system, sans-serif;
+  --font-wordmark: 'Migdal Haemeq', 'Noto Sans Hebrew', sans-serif;
+
   /* Emerald accent */
   --color-accent: #10b77f;
   --color-accent-hover: #0ea371;
@@ -51,6 +62,23 @@
   --cat-ochre-tint: rgba(189, 168, 120, 0.12);
   --cat-plum-tint: rgba(155, 138, 166, 0.13);
   --press-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Hebrew UI: Noto Sans Hebrew (the preset's [lang=he]/[dir=rtl] override
+   handles this; restated here because :root above redefines the stack) */
+[lang='he'],
+[dir='rtl'] {
+  --font-display: 'Noto Sans Hebrew', 'Rubik', sans-serif;
+  --font-heading: 'Noto Sans Hebrew', 'Rubik', sans-serif;
+  --font-body: 'Noto Sans Hebrew', 'Rubik', sans-serif;
+  --font-ui: 'Noto Sans Hebrew', 'Rubik', sans-serif;
+}
+
+/* The wordmark is always Migdal Haemeq, both languages */
+.app-logo-text {
+  font-family: var(--font-wordmark);
+  font-weight: var(--weight-regular);
+  font-size: var(--text-3xl);
 }
 
 /* --- App shell --- */

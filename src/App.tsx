@@ -55,7 +55,8 @@ export default function App() {
           </nav>
         </div>
         <div className="app-header-center">
-          <span className="app-logo-text">{t('app_title')}</span>
+          {/* The wordmark is always the Hebrew brand, in Migdal Haemeq */}
+          <span className="app-logo-text">סדר</span>
         </div>
         <div className="app-header-right">
           <StyleSwitcher />
