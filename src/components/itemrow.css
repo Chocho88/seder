@@ -346,3 +346,106 @@
 .item-due.overdue {
   color: var(--color-error);
 }
+
+/* --- Rest additions: wait clock, depth mark --- */
+.item-rest-wait {
+  width: 11px;
+  height: 11px;
+  color: var(--text-tertiary);
+}
+.item-age {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-medium);
+  color: var(--color-warning);
+}
+/* two whisper bars: "there is more inside this row" */
+.item-depth {
+  width: 9px;
+  height: 8px;
+  position: relative;
+  opacity: 0.7;
+}
+.item-depth::before,
+.item-depth::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--text-tertiary);
+}
+.item-depth::before {
+  top: 1px;
+  width: 9px;
+}
+.item-depth::after {
+  top: 5px;
+  width: 6px;
+}
+
+/* --- Right-click menu --- */
+.rowmenu {
+  position: fixed;
+  z-index: var(--z-toast);
+  min-width: 190px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xl);
+  padding: var(--space-1-5);
+  display: flex;
+  flex-direction: column;
+}
+.rowmenu-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5, 0.625rem);
+  border: none;
+  background: transparent;
+  padding: var(--space-1-5) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: start;
+}
+.rowmenu-entry:hover {
+  background: var(--surface-sunken);
+}
+.rowmenu-entry.on {
+  color: var(--color-accent-dark);
+}
+[data-theme='dark'] .rowmenu-entry.on {
+  color: var(--color-accent);
+}
+.rowmenu-entry .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+.rowmenu-entry.on .icon {
+  color: inherit;
+}
+.rowmenu-entry .cat-dot {
+  width: 8px;
+  height: 8px;
+  margin-inline: 3px;
+}
+.rowmenu-sep {
+  border-block-start: 1px solid color-mix(in srgb, var(--border-color) 25%, transparent);
+  margin-block: var(--space-1);
+}
+.rowmenu-label {
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-caps);
+  color: var(--text-tertiary);
+  padding: var(--space-1) var(--space-2);
+  text-align: start;
+}

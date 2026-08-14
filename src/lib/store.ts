@@ -36,8 +36,8 @@ interface SederState {
   dragCategoryId: string | null;
   touchDrag: { x: number; y: number; title: string } | null; // long-press drag on touch
 
-  // Undo: full item-state snapshots, restored by Cmd+Z or the toast button
-  undoStack: Item[][];
+  // Undo: full state snapshots (items + categories), restored by Cmd+Z or toast
+  undoStack: { items: Item[]; categories: Category[] }[];
   toast: { label: string; at: number } | null;
 
   suggestionsOn: boolean; // settings: morning suggestions visibility
@@ -50,7 +50,7 @@ interface SederState {
   addItem(partial: Partial<Item> & Pick<Item, 'title' | 'categoryId'>): Promise<Item>;
   updateItem(id: string, patch: Partial<Item>): Promise<void>;
   toggleDone(id: string): Promise<void>;
-  sweepDone(): Promise<void>; // archive all done items (manual clear)
+  sweepDone(categoryId?: string): Promise<void>; // archive done items (all, or one list's)
   deleteItem(id: string): Promise<void>;
   setToday(id: string, today: boolean): Promise<void>;
   togglePinned(id: string): Promise<void>;
@@ -73,6 +73,10 @@ interface SederState {
 
   /** Reindexes a quadrant: dragged item gets flags + its visual position. */
   applyMatrixDrop(dragId: string, flags: { urgent: boolean | null; important: boolean | null }, orderedIds: string[]): Promise<void>;
+  /** Reorder a top-level item inside a category (drop before target). */
+  reorderInCategory(dragId: string, targetId: string): Promise<void>;
+  /** Delete a list; its items flow to the Pool (undoable). */
+  deleteCategory(id: string): Promise<void>;
   /** Central drop executor - shared by mouse drops and touch drops. */
   dropOn(key: string): Promise<void>;
 
@@ -95,9 +99,13 @@ async function loadAll(): Promise<{ items: Item[]; categories: Category[] }> {
 }
 
 export const useSeder = create<SederState>((set, get) => {
-  /** Snapshot current items for undo (small dataset - full copy is fine). */
+  /** Snapshot current state for undo (small dataset - full copy is fine). */
   const pushUndo = (toastLabel?: string) => {
-    const stack = [...get().undoStack, get().items.map((i) => ({ ...i }))].slice(-20);
+    const snap = {
+      items: get().items.map((i) => ({ ...i })),
+      categories: get().categories.map((c) => ({ ...c })),
+    };
+    const stack = [...get().undoStack, snap].slice(-20);
     set({ undoStack: stack, ...(toastLabel ? { toast: { label: toastLabel, at: Date.now() } } : {}) });
   };
 
@@ -215,14 +223,13 @@ export const useSeder = create<SederState>((set, get) => {
     await get().updateItem(id, { done, doneAt: done ? Date.now() : null });
   },
 
-  async sweepDone() {
+  async sweepDone(categoryId) {
     pushUndo(t('toast_swept'));
     const now = Date.now();
-    const doneIds = get()
-      .items.filter((i) => i.done)
-      .map((i) => i.id);
+    const hit = (i: Item) => i.done && (!categoryId || i.categoryId === categoryId);
+    const doneIds = get().items.filter(hit).map((i) => i.id);
     await db.items.where('id').anyOf(doneIds).modify({ archivedAt: now });
-    set({ items: get().items.filter((i) => !i.done) });
+    set({ items: get().items.filter((i) => !hit(i)) });
   },
 
   async deleteItem(id) {
@@ -328,6 +335,54 @@ export const useSeder = create<SederState>((set, get) => {
     set({ categories: reordered });
   },
 
+  async reorderInCategory(dragId, targetId) {
+    if (dragId === targetId) return;
+    const all = get().items;
+    const drag = all.find((i) => i.id === dragId);
+    const target = all.find((i) => i.id === targetId);
+    if (!drag || !target) return;
+    pushUndo();
+    // moving across lists lands the item at the target's position there
+    const catId = target.categoryId;
+    const siblings = all
+      .filter((i) => i.categoryId === catId && i.parentId === null && !i.done && i.id !== dragId)
+      .sort((a, b) => a.order - b.order);
+    const idx = siblings.findIndex((i) => i.id === targetId);
+    siblings.splice(idx, 0, { ...drag, categoryId: catId, parentId: null });
+    const orderOf = new Map(siblings.map((i, n) => [i.id, n]));
+    const now = Date.now();
+    await db.transaction('rw', db.items, async () => {
+      await db.items.update(dragId, { categoryId: catId, parentId: null, updatedAt: now });
+      for (const [id, ord] of orderOf) await db.items.update(id, { order: ord });
+    });
+    set({
+      items: all.map((i) => {
+        const patch: Partial<Item> = {};
+        if (i.id === dragId) Object.assign(patch, { categoryId: catId, parentId: null, updatedAt: now });
+        if (orderOf.has(i.id)) patch.order = orderOf.get(i.id);
+        return Object.keys(patch).length ? { ...i, ...patch } : i;
+      }),
+    });
+  },
+
+  async deleteCategory(id) {
+    const cat = get().categories.find((c) => c.id === id);
+    const pool = get().categories.find((c) => c.system);
+    if (!cat || cat.system || !pool) return;
+    pushUndo(t('toast_list_deleted'));
+    const movedIds = get()
+      .items.filter((i) => i.categoryId === id)
+      .map((i) => i.id);
+    await db.transaction('rw', db.items, db.categories, async () => {
+      if (movedIds.length) await db.items.where('id').anyOf(movedIds).modify({ categoryId: pool.id });
+      await db.categories.delete(id);
+    });
+    set({
+      categories: get().categories.filter((c) => c.id !== id),
+      items: get().items.map((i) => (i.categoryId === id ? { ...i, categoryId: pool.id } : i)),
+    });
+  },
+
   async applyMatrixDrop(dragId, flags, orderedIds) {
     pushUndo();
     const now = Date.now();
@@ -380,6 +435,8 @@ export const useSeder = create<SederState>((set, get) => {
     } else if (parts[0] === 'evening') {
       pushUndo();
       await get().updateItem(dragId, { today: true, evening: true, todaySince: Date.now() });
+    } else if (parts[0] === 'row') {
+      await get().reorderInCategory(dragId, parts[1]);
     } else if (parts[0] === 'cat') {
       await get().moveItemToCategory(dragId, parts[1]);
     } else if (parts[0] === 'pin') {
@@ -393,15 +450,26 @@ export const useSeder = create<SederState>((set, get) => {
     const stack = [...get().undoStack];
     const snapshot = stack.pop();
     if (!snapshot) return;
-    const currentIds = new Set(get().items.map((i) => i.id));
-    const snapIds = new Set(snapshot.map((i) => i.id));
-    await db.transaction('rw', db.items, async () => {
-      await db.items.bulkPut(snapshot);
-      // items created after the snapshot get removed on undo
-      const added = [...currentIds].filter((id) => !snapIds.has(id));
-      if (added.length) await db.items.bulkDelete(added);
+    const curItemIds = new Set(get().items.map((i) => i.id));
+    const snapItemIds = new Set(snapshot.items.map((i) => i.id));
+    const curCatIds = new Set(get().categories.map((c) => c.id));
+    const snapCatIds = new Set(snapshot.categories.map((c) => c.id));
+    await db.transaction('rw', db.items, db.categories, async () => {
+      await db.items.bulkPut(snapshot.items);
+      await db.categories.bulkPut(snapshot.categories);
+      // records created after the snapshot get removed on undo
+      const addedItems = [...curItemIds].filter((id) => !snapItemIds.has(id));
+      if (addedItems.length) await db.items.bulkDelete(addedItems);
+      const addedCats = [...curCatIds].filter((id) => !snapCatIds.has(id));
+      if (addedCats.length) await db.categories.bulkDelete(addedCats);
     });
-    set({ undoStack: stack, items: snapshot, toast: null, openItemId: null });
+    set({
+      undoStack: stack,
+      items: snapshot.items,
+      categories: snapshot.categories,
+      toast: null,
+      openItemId: null,
+    });
   },
 
   clearToast() {
@@ -447,14 +515,24 @@ export function todayAgeDays(item: Item): number {
   return Math.floor((Date.now() - item.todaySince) / 86400000);
 }
 
-/** Rule-based morning suggestion candidates (no AI): urgent, due soon, aged. */
+/** Rule-based morning suggestion candidates (no AI): urgent, due soon, aged.
+    A dismissed ("not today") item stays hidden until its snooze passes. */
 export function morningCandidates(items: Item[]): Item[] {
-  const soon = Date.now() + 2 * 86400000;
+  const now = Date.now();
+  const soon = now + 2 * 86400000;
   return items.filter(
     (i) =>
       !i.done &&
       !i.today &&
       i.parentId === null &&
-      (i.urgent === true || (i.due !== null && i.due < soon) || (i.nudge !== null && i.nudge < Date.now())),
+      !(i.suggestSnooze != null && i.suggestSnooze > now) &&
+      (i.urgent === true || (i.due !== null && i.due < soon) || (i.nudge !== null && i.nudge < now)),
   );
+}
+
+/** End of the current day - the natural horizon for "not today". */
+export function endOfToday(): number {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d.getTime();
 }

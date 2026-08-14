@@ -17,6 +17,49 @@ const GRID_GAP = 20;
 
 const rowsFor = (px: number) => Math.max(6, Math.ceil((px + GRID_GAP) / (ROW_UNIT + GRID_GAP)));
 
+/** New list: the ghost becomes an inline input - no browser dialogs here. */
+function NewListGhost({ onAdd }: { onAdd: (name: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState('');
+  const commit = () => {
+    if (name.trim()) onAdd(name.trim());
+    setName('');
+    setEditing(false);
+  };
+  if (!editing) {
+    return (
+      <button className="board-add-category pressable" onClick={() => setEditing(true)}>
+        <svg className="icon" aria-hidden>
+          <use href={`${icons}#icon-plus`} />
+        </svg>
+        {t('add_category')}
+      </button>
+    );
+  }
+  return (
+    <div className="board-add-category board-add-editing">
+      <svg className="icon" aria-hidden>
+        <use href={`${icons}#icon-plus`} />
+      </svg>
+      <input
+        autoFocus
+        className="board-add-input"
+        placeholder={t('new_list_placeholder')}
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+          if (e.key === 'Escape') {
+            setName('');
+            setEditing(false);
+          }
+        }}
+      />
+    </div>
+  );
+}
+
 /** One bento cell: measures itself when natural, obeys the grip when sized. */
 function BentoItem({ category, children }: { category: Category; children: React.ReactNode }) {
   const { updateCategory } = useSeder();
@@ -77,7 +120,7 @@ function BentoItem({ category, children }: { category: Category; children: React
       </div>
       <span
         className="bento-grip"
-        title=""
+        title={t('resize_hint')}
         onPointerDown={grip}
         onDoubleClick={() => void updateCategory(category.id, { w: 2, h: null })}
       />
@@ -129,18 +172,7 @@ export default function Board() {
             <CategoryCard category={c} />
           </BentoItem>
         ))}
-        <button
-          className="board-add-category pressable"
-          onClick={() => {
-            const name = window.prompt(t('add_category'));
-            if (name?.trim()) void addCategory(name.trim());
-          }}
-        >
-          <svg className="icon" aria-hidden>
-            <use href={`${icons}#icon-plus`} />
-          </svg>
-          {t('add_category')}
-        </button>
+        <NewListGhost onAdd={(name) => void addCategory(name)} />
       </div>
     </div>
   );

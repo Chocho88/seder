@@ -12,7 +12,7 @@
 //   so every line of text shares one inline-start edge.
 // - Properties live at the bottom edge, out of the reading path.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import icons from '../../../design-system/icons.svg';
 import { useSeder, childrenOf } from '../lib/store';
 import { analyzeMove, itemState } from '../lib/nextMove';
@@ -30,6 +30,16 @@ export default function DetailPanel({ itemId }: { itemId: string }) {
     useSeder();
   const item = items.find((i) => i.id === itemId);
   const [subTitle, setSubTitle] = useState('');
+
+  // Esc closes the card - muscle memory deserves to work
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') openItem(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [openItem]);
+
   if (!item) return null;
 
   const cat = categories.find((c) => c.id === item.categoryId);

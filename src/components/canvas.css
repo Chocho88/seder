@@ -214,3 +214,9 @@
   transform: none;
   margin-inline-start: auto;
 }
+
+/* resize affordances present at rest */
+.canvas-divider-line {
+  width: 2px;
+  border-radius: 2px;
+}

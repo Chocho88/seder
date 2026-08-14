@@ -36,6 +36,7 @@ export interface Item {
   evening?: boolean; // Things-style "This Evening": today's quieter second shelf
   pinned: boolean;
   matrixOrder?: number; // manual visual order inside a matrix quadrant
+  suggestSnooze?: number | null; // "not today": hides from suggestions until this time
 
   due: number | null; // epoch ms, optional
   nudge: number | null; // for wait items: "check in on..."
@@ -56,6 +57,7 @@ export interface Category {
   order: number;
   archived: boolean;
   system?: boolean; // the Pool: the basic intake list, undeletable, i18n-named
+  customColor?: string | null; // free-pick hex; overrides colorKey's hue when set
   // bento geometry - user-dragged size; unset = natural
   w?: number; // grid column span
   h?: number | null; // fixed pixel height (content scrolls); null/unset = natural

@@ -26,6 +26,7 @@ export default function CaptureBar() {
   const [sel, setSel] = useState(-1); // keyboard selection in matches; -1 = capture
   const [listening, setListening] = useState(false);
   const [chosenCatId, setChosenCatId] = useState<string | null>(null); // chip choice; null = Pool
+  const [dateOff, setDateOff] = useState(false); // user rejected the parsed date
   const inputRef = useRef<HTMLInputElement>(null);
   const recRef = useRef<any>(null);
 
@@ -40,12 +41,23 @@ export default function CaptureBar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [captureOpen, captureDictate]);
 
+  // Esc closes capture wherever focus is (chips, mic, chip-x...)
+  useEffect(() => {
+    if (!captureOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCaptureOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [captureOpen, setCaptureOpen]);
+
   useEffect(() => {
     if (captureOpen) inputRef.current?.focus();
     else {
       setText('');
       setSel(-1);
       setChosenCatId(null);
+      setDateOff(false);
       recRef.current?.stop?.();
       setListening(false);
     }
@@ -71,16 +83,17 @@ export default function CaptureBar() {
         rest = rest.replace(hash[0], '');
       }
     }
-    // natural-language dates: "מחר", "friday"... "today/היום" means the flag
+    // natural-language dates: "מחר", "friday"... "today/היום" means the flag.
+    // Clicking the date chip rejects the parse - the word stays in the title.
     let due: number | null = null;
-    const parsedDate = parseDueDate(rest);
+    const parsedDate = dateOff ? null : parseDueDate(rest);
     if (parsedDate) {
       if (/^(today|היום)$/i.test(parsedDate.token)) today = true;
       else due = parsedDate.due;
       rest = rest.replace(parsedDate.token, ' ').replace(/\s{2,}/g, ' ');
     }
     return { title: rest.trim(), today, category, due };
-  }, [text, categories, chosenCatId, pool]);
+  }, [text, categories, chosenCatId, pool, dateOff]);
 
   const matches = useMemo(() => {
     const q = text.trim().toLowerCase();
@@ -176,12 +189,20 @@ export default function CaptureBar() {
             </span>
           )}
           {parsed.due !== null && (
-            <span className="capture-today-flag capture-due-chip">
+            <button
+              className="capture-today-flag capture-due-chip"
+              type="button"
+              title={t('dismiss')}
+              onClick={() => setDateOff(true)}
+            >
               <svg className="icon" aria-hidden="true">
                 <use href={`${icons}#icon-calendar`} />
               </svg>
               {formatDue(parsed.due, lang)}
-            </span>
+              <svg className="icon capture-chip-x" aria-hidden="true">
+                <use href={`${icons}#icon-x`} />
+              </svg>
+            </button>
           )}
           <button
             className={`capture-mic pressable ${listening ? 'listening' : ''}`}

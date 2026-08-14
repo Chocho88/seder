@@ -5,7 +5,7 @@
 
 import { useRef, useState } from 'react';
 import icons from '../../../design-system/icons.svg';
-import { useSeder, morningCandidates } from '../lib/store';
+import { useSeder, morningCandidates, endOfToday } from '../lib/store';
 import { startDrag } from '../lib/resize';
 import { t, useLang } from '../lib/i18n';
 import { dirProps } from '../lib/rtl';
@@ -109,9 +109,9 @@ export default function Canvas() {
                 </button>
                 <button
                   className="item-action tooltip"
-                  data-tooltip={t('dismiss')}
-                  aria-label={t('dismiss')}
-                  onClick={() => void updateItem(i.id, { urgent: i.urgent, nudge: null })}
+                  data-tooltip={t('not_today')}
+                  aria-label={t('not_today')}
+                  onClick={() => void updateItem(i.id, { suggestSnooze: endOfToday(), nudge: null })}
                 >
                   <svg className="icon">
                     <use href={`${icons}#icon-x`} />
@@ -126,7 +126,7 @@ export default function Canvas() {
         <MatrixView />
         <div
           className="canvas-matrix-lip"
-          title=""
+          title={t('resize_hint')}
           onPointerDown={dragMatrixHeight}
           onDoubleClick={() => {
             setRowMin(null);

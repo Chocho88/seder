@@ -157,3 +157,85 @@
 .category-card-add::placeholder {
   color: var(--text-tertiary);
 }
+
+/* --- In-list reorder: insertion line between rows --- */
+.card-slot {
+  position: relative;
+}
+.card-slot.insert-before::before {
+  content: '';
+  position: absolute;
+  inset-inline: var(--space-2);
+  top: -1px;
+  height: 2.5px;
+  border-radius: 2px;
+  background: var(--cat-color, var(--color-accent));
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* --- Header tools: appear with the hand --- */
+.category-card-tools {
+  display: inline-flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-default);
+}
+.category-card-header:hover .category-card-tools {
+  opacity: 1;
+}
+.category-card-tools .item-action {
+  position: static;
+  transform: none;
+  pointer-events: auto;
+}
+@media (hover: none) {
+  .category-card-tools {
+    opacity: 1;
+  }
+}
+
+/* --- Rename input: the title, editable in place --- */
+.category-card-rename {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  font-family: inherit;
+  color: var(--text-primary);
+  outline: none;
+  border-block-end: 1.5px solid var(--color-accent);
+}
+
+/* --- Pool empty state: teach the intake in one line --- */
+.pool-empty {
+  margin: 0;
+  padding: var(--space-4) var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+/* --- Custom color swatch: a color input wearing a circle --- */
+.category-colorswatch-custom {
+  position: relative;
+  overflow: hidden;
+  background: conic-gradient(#c06f88, #c09b3f, #6f9b7d, #5f83b2, #8f74ab, #c06f88);
+  cursor: pointer;
+  display: inline-block;
+}
+.category-colorswatch-custom input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* tools dock at the header's end; the count stays the title's satellite */
+.category-card-tools {
+  margin-inline-start: auto;
+}

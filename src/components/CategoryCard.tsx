@@ -1,8 +1,11 @@
 // One category as a card: title row + item rows + quiet inline add.
 // The card is a living object: drag its header to reorder cards; drop any
-// item row onto it to move that item (and its sub-items) into this list.
+// item row onto it to move that item into this list; drop onto a specific
+// row to place it exactly there. Double-click the title to rename. Hover
+// the header for sweep (when done items exist) and delete (items -> Pool).
 
 import { useState } from 'react';
+import icons from '../../../design-system/icons.svg';
 import { useSeder, topLevelOf } from '../lib/store';
 import { dirProps } from '../lib/rtl';
 import { t } from '../lib/i18n';
@@ -17,14 +20,17 @@ export default function CategoryCard({ category }: { category: Category }) {
     dragItemId,
     dragCategoryId,
     setDragCategory,
-    setDragItem,
     dropOn,
     reorderCategory,
     updateCategory,
+    deleteCategory,
+    sweepDone,
   } = useSeder();
   const [adding, setAdding] = useState('');
   const [over, setOver] = useState(false);
+  const [insertBefore, setInsertBefore] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [renaming, setRenaming] = useState<string | null>(null);
   const top = topLevelOf(items, category.id);
   const open = top.filter((i) => !i.done);
   const done = top.filter((i) => i.done);
@@ -40,16 +46,23 @@ export default function CategoryCard({ category }: { category: Category }) {
     await addItem({ title, categoryId: category.id });
   };
 
+  const commitRename = () => {
+    const name = renaming?.trim();
+    if (name && name !== category.name) void updateCategory(category.id, { name });
+    setRenaming(null);
+  };
+
   return (
     <section
       className={`category-card${over ? ' drag-over' : ''}`}
       data-cat={category.colorKey}
       data-system={category.system ? '' : undefined}
       data-drop={`cat:${category.id}`}
+      style={category.customColor ? ({ '--cat-color': category.customColor } as React.CSSProperties) : undefined}
       onDragOver={(e) => {
-        if (dragForeign || (dragCategoryId && dragCategoryId !== category.id)) {
+        if (dragItemId || (dragCategoryId && dragCategoryId !== category.id)) {
           e.preventDefault();
-          setOver(true);
+          if (dragForeign || dragCategoryId) setOver(true);
         }
       }}
       onDragLeave={() => setOver(false)}
@@ -65,7 +78,7 @@ export default function CategoryCard({ category }: { category: Category }) {
     >
       <header
         className="category-card-header"
-        draggable
+        draggable={renaming === null}
         onDragStart={(e) => {
           e.stopPropagation();
           setDragCategory(category.id);
@@ -87,26 +100,118 @@ export default function CategoryCard({ category }: { category: Category }) {
               {CATEGORY_COLOR_KEYS.map((key) => (
                 <button
                   key={key}
-                  className={`category-colorswatch${key === category.colorKey ? ' current' : ''}`}
+                  className={`category-colorswatch${key === category.colorKey && !category.customColor ? ' current' : ''}`}
                   data-cat={key}
                   aria-label={key}
                   onClick={() => {
-                    void updateCategory(category.id, { colorKey: key });
+                    void updateCategory(category.id, { colorKey: key, customColor: null });
                     setPickerOpen(false);
                   }}
                 />
               ))}
+              {/* the eleventh circle: any color at all */}
+              <label
+                className={`category-colorswatch category-colorswatch-custom${category.customColor ? ' current' : ''}`}
+                title={t('custom_color')}
+                style={category.customColor ? { background: category.customColor } : undefined}
+              >
+                <input
+                  type="color"
+                  value={category.customColor ?? '#888888'}
+                  onChange={(e) => void updateCategory(category.id, { customColor: e.target.value })}
+                />
+              </label>
             </span>
           )}
         </span>
-        <h2 className="category-card-title" {...dirProps(displayName)}>
-          {displayName}
-        </h2>
+
+        {renaming !== null ? (
+          <input
+            className="category-card-rename"
+            value={renaming}
+            autoFocus
+            onChange={(e) => setRenaming(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commitRename();
+              if (e.key === 'Escape') setRenaming(null);
+            }}
+            {...dirProps(renaming || category.name)}
+          />
+        ) : (
+          <h2
+            className="category-card-title"
+            title={category.system ? undefined : t('rename_hint')}
+            onDoubleClick={() => {
+              if (!category.system) setRenaming(category.name);
+            }}
+            {...dirProps(displayName)}
+          >
+            {displayName}
+          </h2>
+        )}
         <span className="category-card-count">{open.length}</span>
+
+        {/* header hover actions - quiet until needed */}
+        <span className="category-card-tools">
+          {done.length > 0 && (
+            <button
+              className="item-action tooltip"
+              data-tooltip={t('sweep_done')}
+              aria-label={t('sweep_done')}
+              draggable={false}
+              onClick={(e) => {
+                e.stopPropagation();
+                void sweepDone(category.id);
+              }}
+            >
+              <svg className="icon">
+                <use href={`${icons}#icon-check`} />
+              </svg>
+            </button>
+          )}
+          {!category.system && (
+            <button
+              className="item-action tooltip"
+              data-tooltip={t('delete')}
+              aria-label={t('delete')}
+              draggable={false}
+              onClick={(e) => {
+                e.stopPropagation();
+                void deleteCategory(category.id);
+              }}
+            >
+              <svg className="icon">
+                <use href={`${icons}#icon-trash`} />
+              </svg>
+            </button>
+          )}
+        </span>
       </header>
+
       <div className="category-card-body">
+        {category.system && top.length === 0 && <p className="pool-empty">{t('pool_empty')}</p>}
         {open.map((i) => (
-          <ItemRow key={i.id} item={i} />
+          <div
+            key={i.id}
+            className={`card-slot${insertBefore === i.id ? ' insert-before' : ''}`}
+            data-drop={`row:${i.id}`}
+            onDragOver={(e) => {
+              if (!dragItemId || dragItemId === i.id) return;
+              e.preventDefault();
+              e.stopPropagation();
+              setInsertBefore(i.id);
+            }}
+            onDragLeave={() => setInsertBefore((v) => (v === i.id ? null : v))}
+            onDrop={(e) => {
+              e.stopPropagation();
+              setInsertBefore(null);
+              setOver(false);
+              void dropOn(`row:${i.id}`);
+            }}
+          >
+            <ItemRow item={i} />
+          </div>
         ))}
         {done.length > 0 && open.length > 0 && <div className="category-card-donesep" aria-hidden />}
         {done.map((i) => (

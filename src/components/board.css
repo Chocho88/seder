@@ -238,3 +238,31 @@
   border-color: var(--border-color-strong);
   background: var(--surface-sunken);
 }
+
+/* new-list editing state: same ghost, now listening */
+.board-add-editing {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  cursor: text;
+}
+.board-add-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-primary);
+  outline: none;
+}
+.board-add-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* resize grip: faintly present at rest - discoverable, not loud */
+.bento-grip {
+  opacity: 0.3;
+}
