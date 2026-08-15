@@ -5,6 +5,7 @@
 // the header for sweep (when done items exist) and delete (items -> Pool).
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import icons from '../../vendor/design-system/icons.svg';
 import { useSeder, topLevelOf } from '../lib/store';
 import { dirProps } from '../lib/rtl';
@@ -31,6 +32,7 @@ export default function CategoryCard({ category }: { category: Category }) {
   const [insertBefore, setInsertBefore] = useState<string | null>(null);
   const [endOver, setEndOver] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerPos, setPickerPos] = useState<React.CSSProperties>({});
   const [renaming, setRenaming] = useState<string | null>(null);
   const top = topLevelOf(items, category.id);
   const open = top.filter((i) => !i.done);
@@ -93,37 +95,54 @@ export default function CategoryCard({ category }: { category: Category }) {
             draggable={false}
             onClick={(e) => {
               e.stopPropagation();
+              const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              const rtl = document.documentElement.dir === 'rtl';
+              // anchor under the dot; keep inside the viewport horizontally
+              const width = 11 * 22 + 24;
+              const left = rtl ? Math.max(8, r.right - width) : Math.min(r.left - 6, window.innerWidth - width - 8);
+              setPickerPos({ top: r.bottom + 6, left: Math.max(8, left) });
               setPickerOpen((o) => !o);
             }}
           />
-          {pickerOpen && (
-            <span className="category-colorpicker" onClick={(e) => e.stopPropagation()}>
-              {CATEGORY_COLOR_KEYS.map((key) => (
-                <button
-                  key={key}
-                  className={`category-colorswatch${key === category.colorKey && !category.customColor ? ' current' : ''}`}
-                  data-cat={key}
-                  aria-label={key}
-                  onClick={() => {
-                    void updateCategory(category.id, { colorKey: key, customColor: null });
-                    setPickerOpen(false);
-                  }}
-                />
-              ))}
-              {/* the eleventh circle: any color at all */}
-              <label
-                className={`category-colorswatch category-colorswatch-custom${category.customColor ? ' current' : ''}`}
-                title={t('custom_color')}
-                style={category.customColor ? { background: category.customColor } : undefined}
-              >
-                <input
-                  type="color"
-                  value={category.customColor ?? '#888888'}
-                  onChange={(e) => void updateCategory(category.id, { customColor: e.target.value })}
-                />
-              </label>
-            </span>
-          )}
+          {pickerOpen &&
+            createPortal(
+              <>
+                <div className="colorpicker-scrim" onClick={() => setPickerOpen(false)} />
+                <span
+                  className="category-colorpicker"
+                  data-cat={category.colorKey}
+                  dir={document.documentElement.dir}
+                  style={pickerPos}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {CATEGORY_COLOR_KEYS.map((key) => (
+                    <button
+                      key={key}
+                      className={`category-colorswatch${key === category.colorKey && !category.customColor ? ' current' : ''}`}
+                      data-cat={key}
+                      aria-label={key}
+                      onClick={() => {
+                        void updateCategory(category.id, { colorKey: key, customColor: null });
+                        setPickerOpen(false);
+                      }}
+                    />
+                  ))}
+                  {/* the eleventh circle: any color at all */}
+                  <label
+                    className={`category-colorswatch category-colorswatch-custom${category.customColor ? ' current' : ''}`}
+                    title={t('custom_color')}
+                    style={category.customColor ? { background: category.customColor } : undefined}
+                  >
+                    <input
+                      type="color"
+                      value={category.customColor ?? '#888888'}
+                      onChange={(e) => void updateCategory(category.id, { customColor: e.target.value })}
+                    />
+                  </label>
+                </span>
+              </>,
+              document.body,
+            )}
         </span>
 
         {renaming !== null ? (

@@ -62,11 +62,14 @@
 .cat-dot-button:hover {
   transform: scale(1.35);
 }
-.category-colorpicker {
-  position: absolute;
-  top: calc(100% + 6px);
-  inset-inline-start: -6px;
+.colorpicker-scrim {
+  position: fixed;
+  inset: 0;
   z-index: var(--z-popover);
+}
+.category-colorpicker {
+  position: fixed;
+  z-index: calc(var(--z-popover) + 1);
   display: flex;
   gap: var(--space-1-5);
   padding: var(--space-2);
