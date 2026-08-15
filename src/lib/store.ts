@@ -5,7 +5,21 @@ import { create } from 'zustand';
 import { db, uid } from './db';
 import { seedIfEmpty } from './seed';
 import { t } from './i18n';
-import type { CardStyle, Category, DetailMode, Item, ViewId } from './types';
+import { DEFAULT_SECTIONS, type CardStyle, type Category, type DetailMode, type Item, type SectionId, type SectionPref, type ViewId } from './types';
+
+const SECTIONS_KEY = 'seder-sections';
+function loadSections(): SectionPref[] {
+  try {
+    const raw = localStorage.getItem(SECTIONS_KEY);
+    if (!raw) return DEFAULT_SECTIONS;
+    const saved = JSON.parse(raw) as SectionPref[];
+    // merge: keep saved order, append any new default sections
+    const known = new Set(saved.map((s) => s.id));
+    return [...saved.filter((s) => DEFAULT_SECTIONS.some((d) => d.id === s.id)), ...DEFAULT_SECTIONS.filter((d) => !known.has(d.id))];
+  } catch {
+    return DEFAULT_SECTIONS;
+  }
+}
 import {
   initialCardStyle,
   initialDetailMode,
@@ -42,6 +56,10 @@ interface SederState {
 
   suggestionsOn: boolean; // settings: morning suggestions visibility
   logbookOpen: boolean;
+
+  // Canvas sections: order + visibility, user-arranged, persisted locally
+  sections: SectionPref[];
+  dragSectionId: SectionId | null;
 
   // --- lifecycle ---
   init(): Promise<void>;
@@ -85,6 +103,14 @@ interface SederState {
 
   setSuggestionsOn(on: boolean): void;
   setLogbookOpen(open: boolean): void;
+  setSectionOn(id: SectionId, on: boolean): void;
+  moveSection(dragId: SectionId, targetId: SectionId): void;
+  resetSections(): void;
+  setDragSection(id: SectionId | null): void;
+  /** Move an item to the END of a category (drop on empty card space). */
+  moveToEndOfCategory(id: string, categoryId: string): Promise<void>;
+  /** Reorder sub-items under the same parent (drop before target). */
+  reorderChild(dragId: string, targetId: string): Promise<void>;
   /** Bring an archived item back to life in its list. */
   restoreItem(id: string): Promise<void>;
 }
@@ -126,6 +152,8 @@ export const useSeder = create<SederState>((set, get) => {
   toast: null,
   suggestionsOn: localStorage.getItem('seder-suggestions') !== 'off',
   logbookOpen: false,
+  sections: loadSections(),
+  dragSectionId: null,
 
   async init() {
     await seedIfEmpty(wantsFreshSeed());
@@ -436,9 +464,16 @@ export const useSeder = create<SederState>((set, get) => {
       pushUndo();
       await get().updateItem(dragId, { today: true, evening: true, todaySince: Date.now() });
     } else if (parts[0] === 'row') {
-      await get().reorderInCategory(dragId, parts[1]);
+      const target = get().items.find((i) => i.id === parts[1]);
+      if (target?.parentId) await get().reorderChild(dragId, parts[1]);
+      else await get().reorderInCategory(dragId, parts[1]);
+    } else if (parts[0] === 'catend') {
+      await get().moveToEndOfCategory(dragId, parts[1]);
     } else if (parts[0] === 'cat') {
-      await get().moveItemToCategory(dragId, parts[1]);
+      const drag = get().items.find((i) => i.id === dragId);
+      // dropping on a card's body: same list -> go to end; other list -> move
+      if (drag?.categoryId === parts[1] && drag.parentId === null) await get().moveToEndOfCategory(dragId, parts[1]);
+      else await get().moveItemToCategory(dragId, parts[1]);
     } else if (parts[0] === 'pin') {
       pushUndo();
       await get().updateItem(dragId, { pinned: true });
@@ -482,6 +517,83 @@ export const useSeder = create<SederState>((set, get) => {
   },
   setLogbookOpen(open) {
     set({ logbookOpen: open });
+  },
+
+  setSectionOn(id, on) {
+    const sections = get().sections.map((s) => (s.id === id ? { ...s, on } : s));
+    localStorage.setItem(SECTIONS_KEY, JSON.stringify(sections));
+    set({ sections });
+  },
+  moveSection(dragId, targetId) {
+    if (dragId === targetId) return;
+    const sections = [...get().sections];
+    const from = sections.findIndex((s) => s.id === dragId);
+    const to = sections.findIndex((s) => s.id === targetId);
+    if (from < 0 || to < 0) return;
+    const [moved] = sections.splice(from, 1);
+    sections.splice(to, 0, moved);
+    localStorage.setItem(SECTIONS_KEY, JSON.stringify(sections));
+    set({ sections });
+  },
+  resetSections() {
+    localStorage.removeItem(SECTIONS_KEY);
+    set({ sections: DEFAULT_SECTIONS });
+  },
+  setDragSection(id) {
+    set({ dragSectionId: id });
+  },
+
+  async moveToEndOfCategory(id, categoryId) {
+    const all = get().items;
+    const it = all.find((i) => i.id === id);
+    if (!it) return;
+    pushUndo();
+    const siblings = all
+      .filter((i) => i.categoryId === categoryId && i.parentId === null && !i.done && i.id !== id)
+      .sort((a, b) => a.order - b.order);
+    const orderOf = new Map(siblings.map((i, n) => [i.id, n]));
+    orderOf.set(id, siblings.length);
+    const now = Date.now();
+    await db.transaction('rw', db.items, async () => {
+      await db.items.update(id, { categoryId, parentId: null, updatedAt: now });
+      for (const [iid, ord] of orderOf) await db.items.update(iid, { order: ord });
+    });
+    set({
+      items: all.map((i) => {
+        const patch: Partial<Item> = {};
+        if (i.id === id) Object.assign(patch, { categoryId, parentId: null, updatedAt: now });
+        if (orderOf.has(i.id)) patch.order = orderOf.get(i.id);
+        return Object.keys(patch).length ? { ...i, ...patch } : i;
+      }),
+    });
+  },
+
+  async reorderChild(dragId, targetId) {
+    if (dragId === targetId) return;
+    const all = get().items;
+    const drag = all.find((i) => i.id === dragId);
+    const target = all.find((i) => i.id === targetId);
+    if (!drag || !target || !target.parentId) return;
+    pushUndo();
+    const parentId = target.parentId;
+    const siblings = all
+      .filter((i) => i.parentId === parentId && i.id !== dragId)
+      .sort((a, b) => a.order - b.order);
+    const idx = siblings.findIndex((i) => i.id === targetId);
+    siblings.splice(idx, 0, drag);
+    const orderOf = new Map(siblings.map((i, n) => [i.id, n]));
+    await db.transaction('rw', db.items, async () => {
+      await db.items.update(dragId, { parentId, categoryId: target.categoryId });
+      for (const [id, ord] of orderOf) await db.items.update(id, { order: ord });
+    });
+    set({
+      items: all.map((i) => {
+        const patch: Partial<Item> = {};
+        if (i.id === dragId) Object.assign(patch, { parentId, categoryId: target.categoryId });
+        if (orderOf.has(i.id)) patch.order = orderOf.get(i.id);
+        return Object.keys(patch).length ? { ...i, ...patch } : i;
+      }),
+    });
   },
 
   async restoreItem(id) {

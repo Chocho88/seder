@@ -90,7 +90,23 @@ export const CATEGORY_COLOR_KEYS: CategoryColorKey[] = [
 
 // UI-level types
 export type ViewId = 'today' | 'board' | 'matrix' | 'all';
-export type CardStyle = 'mono' | 'tint' | 'header'; // the decide-by-looking switcher
+export type CardStyle = 'mono' | 'tint' | 'header';
+
+/** Canvas sections: each is a draggable, toggleable block. */
+export type SectionId = 'date' | 'suggestions' | 'pinned' | 'matrix' | 'evening' | 'done' | 'lists';
+export interface SectionPref {
+  id: SectionId;
+  on: boolean;
+}
+export const DEFAULT_SECTIONS: SectionPref[] = [
+  { id: 'date', on: true },
+  { id: 'suggestions', on: true },
+  { id: 'matrix', on: true },
+  { id: 'evening', on: true },
+  { id: 'done', on: true },
+  { id: 'pinned', on: true },
+  { id: 'lists', on: true },
+]; // the decide-by-looking switcher
 export type DetailMode = 'panel' | 'inline';
 export type Lang = 'en' | 'he';
 export type Theme = 'light' | 'dark';

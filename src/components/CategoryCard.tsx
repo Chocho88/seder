@@ -29,6 +29,7 @@ export default function CategoryCard({ category }: { category: Category }) {
   const [adding, setAdding] = useState('');
   const [over, setOver] = useState(false);
   const [insertBefore, setInsertBefore] = useState<string | null>(null);
+  const [endOver, setEndOver] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [renaming, setRenaming] = useState<string | null>(null);
   const top = topLevelOf(items, category.id);
@@ -213,7 +214,30 @@ export default function CategoryCard({ category }: { category: Category }) {
             <ItemRow item={i} />
           </div>
         ))}
-        {done.length > 0 && open.length > 0 && <div className="category-card-donesep" aria-hidden />}
+        {/* end-of-list landing zone: appears while a top-level row is in the air */}
+        {dragItemId && (
+          <div
+            className={`card-endzone${endOver ? ' drag-over' : ''}`}
+            data-drop={`catend:${category.id}`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setEndOver(true);
+            }}
+            onDragLeave={() => setEndOver(false)}
+            onDrop={(e) => {
+              e.stopPropagation();
+              setEndOver(false);
+              setOver(false);
+              void dropOn(`catend:${category.id}`);
+            }}
+          />
+        )}
+        {done.length > 0 && open.length > 0 && (
+          <div className="category-card-donesep" aria-hidden>
+            <span>{t('done_section')}</span>
+          </div>
+        )}
         {done.map((i) => (
           <ItemRow key={i.id} item={i} />
         ))}

@@ -8,15 +8,74 @@ import { db } from '../lib/db';
 import { useSeder } from '../lib/store';
 import { setFontSize, setColoredLists, getThemeMode, applyThemeMode, type ThemeMode } from '../lib/urlState';
 import { t, useLang } from '../lib/i18n';
-import type { CardStyle } from '../lib/types';
+import type { CardStyle, SectionId } from '../lib/types';
 import './settings.css';
+
+/** Sections list: toggle visibility, drag to reorder - the canvas obeys. */
+function SectionsEditor() {
+  const { sections, setSectionOn, moveSection, resetSections } = useSeder();
+  const [dragId, setDragId] = useState<SectionId | null>(null);
+  const [overId, setOverId] = useState<SectionId | null>(null);
+  return (
+    <div className="settings-sections">
+      <div className="settings-sections-head">
+        <span className="settings-label">{t('sections')}</span>
+        <button className="settings-link" onClick={resetSections}>
+          {t('reset_layout')}
+        </button>
+      </div>
+      <p className="settings-hint">{t('sections_hint')}</p>
+      {sections.map((s) => (
+        <div
+          key={s.id}
+          className={`settings-section-row${overId === s.id ? ' over' : ''}${dragId === s.id ? ' dragging' : ''}`}
+          draggable
+          onDragStart={(e) => {
+            e.dataTransfer.effectAllowed = 'move';
+            setDragId(s.id);
+          }}
+          onDragEnd={() => {
+            setDragId(null);
+            setOverId(null);
+          }}
+          onDragOver={(e) => {
+            if (dragId && dragId !== s.id) {
+              e.preventDefault();
+              setOverId(s.id);
+            }
+          }}
+          onDragLeave={() => setOverId((v) => (v === s.id ? null : v))}
+          onDrop={() => {
+            if (dragId) moveSection(dragId, s.id);
+            setDragId(null);
+            setOverId(null);
+          }}
+        >
+          <svg className="icon settings-grip" aria-hidden="true">
+            <use href={`${icons}#icon-menu`} />
+          </svg>
+          <span className="settings-section-name">{t(`section_${s.id}`)}</span>
+          <button
+            className={`settings-switch settings-switch-sm${s.on ? ' on' : ''}`}
+            role="switch"
+            aria-checked={s.on}
+            disabled={s.id === 'lists'}
+            onClick={() => setSectionOn(s.id, !s.on)}
+          >
+            <span className="settings-knob" />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const STYLES: CardStyle[] = ['tint', 'mono', 'header'];
 const SIZES = ['s', 'm', 'l'] as const;
 const THEMES: ThemeMode[] = ['light', 'dark', 'system'];
 
 export default function SettingsMenu() {
-  const { cardStyle, setCardStyle, suggestionsOn, setSuggestionsOn, setLogbookOpen } = useSeder();
+  const { cardStyle, setCardStyle, setLogbookOpen } = useSeder();
   useLang(); // re-render on language switch
   const [open, setOpen] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(getThemeMode);
@@ -59,7 +118,7 @@ export default function SettingsMenu() {
   };
 
   const resetLayout = () => {
-    for (const k of ['seder-split', 'seder-matrix-rowmin']) localStorage.removeItem(k);
+    for (const k of ['seder-split', 'seder-matrix-rowmin', 'seder-sections']) localStorage.removeItem(k);
     void db.categories.toCollection().modify((c) => {
       delete (c as any).w;
       (c as any).h = null;
@@ -135,17 +194,9 @@ export default function SettingsMenu() {
               <span className="settings-knob" />
             </button>
           </div>
-          <div className="settings-row">
-            <span className="settings-label">{t('suggestions')}</span>
-            <button
-              className={`settings-switch${suggestionsOn ? ' on' : ''}`}
-              role="switch"
-              aria-checked={suggestionsOn}
-              onClick={() => setSuggestionsOn(!suggestionsOn)}
-            >
-              <span className="settings-knob" />
-            </button>
-          </div>
+          <div className="settings-divider" />
+
+          <SectionsEditor />
 
           <div className="settings-divider" />
 

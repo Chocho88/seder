@@ -25,6 +25,17 @@ import './detail.css';
 // Voice matches the app's other affordances: "להוסיף כל דבר…", "להוסיף להיום".
 const ADD_NOTES = { en: 'Add notes…', he: 'להוסיף הערות…' } as const;
 
+// <input type=date> speaks yyyy-mm-dd in local time
+const toDateInput = (ts: number) => {
+  const d = new Date(ts);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+const fromDateInput = (s: string) => {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d, 9, 0, 0, 0).getTime();
+};
+
 export default function DetailPanel({ itemId }: { itemId: string }) {
   const { items, categories, updateItem, deleteItem, openItem, setToday, togglePinned, toggleDone, addItem } =
     useSeder();
@@ -124,6 +135,59 @@ export default function DetailPanel({ itemId }: { itemId: string }) {
               onChange={(e) => void updateItem(item.id, { notes: e.target.value })}
               {...dirIf(item.notes)}
             />
+          </div>
+
+          {/* Dates: deadline for any task; check-in for waiting ones. Native
+              date inputs (they're excellent on iOS), dressed as quiet rows. */}
+          <div className="detail-dates">
+            <label className="detail-date">
+              <svg className="icon" aria-hidden="true">
+                <use href={`${icons}#icon-flag`} />
+              </svg>
+              <span className="detail-date-label">{t('due_date')}</span>
+              <input
+                type="date"
+                className="detail-date-input"
+                value={item.due ? toDateInput(item.due) : ''}
+                onChange={(e) => void updateItem(item.id, { due: e.target.value ? fromDateInput(e.target.value) : null })}
+              />
+              {item.due && (
+                <button
+                  className="detail-date-clear"
+                  aria-label={t('clear')}
+                  onClick={() => void updateItem(item.id, { due: null })}
+                >
+                  <svg className="icon">
+                    <use href={`${icons}#icon-x`} />
+                  </svg>
+                </button>
+              )}
+            </label>
+            {state === 'wait' && (
+              <label className="detail-date">
+                <svg className="icon" aria-hidden="true">
+                  <use href={`${icons}#icon-clock`} />
+                </svg>
+                <span className="detail-date-label">{t('nudge_date')}</span>
+                <input
+                  type="date"
+                  className="detail-date-input"
+                  value={item.nudge ? toDateInput(item.nudge) : ''}
+                  onChange={(e) => void updateItem(item.id, { nudge: e.target.value ? fromDateInput(e.target.value) : null })}
+                />
+                {item.nudge && (
+                  <button
+                    className="detail-date-clear"
+                    aria-label={t('clear')}
+                    onClick={() => void updateItem(item.id, { nudge: null })}
+                  >
+                    <svg className="icon">
+                      <use href={`${icons}#icon-x`} />
+                    </svg>
+                  </button>
+                )}
+              </label>
+            )}
           </div>
 
           <section className="detail-subitems">

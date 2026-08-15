@@ -220,3 +220,78 @@
   width: 2px;
   border-radius: 2px;
 }
+
+/* --- Section shells: draggable blocks with a quiet handle --- */
+.section-shell {
+  position: relative;
+  border-block-start: 2px solid transparent;
+  transition: border-color var(--duration-fast) var(--ease-default);
+}
+.section-shell.section-over {
+  border-block-start-color: var(--color-accent);
+}
+.section-shell.section-dragging {
+  opacity: 0.55;
+}
+.section-shell + .section-shell {
+  margin-block-start: var(--space-5);
+}
+.section-handle {
+  position: absolute;
+  inset-inline-start: calc(-1 * var(--space-5));
+  top: 10px;
+  width: 16px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  color: var(--text-tertiary);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-default);
+}
+.section-shell:hover > .section-handle {
+  opacity: 0.7;
+}
+.section-handle:hover {
+  opacity: 1 !important;
+  color: var(--text-primary);
+}
+.section-handle .icon {
+  width: 12px;
+  height: 12px;
+}
+/* the section stack replaces the side's own gap */
+.canvas-side {
+  gap: 0;
+}
+.canvas-lists {
+  display: flex;
+  flex-direction: column;
+}
+
+/* "+N more" under suggestions */
+.canvas-more {
+  border: none;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  text-align: start;
+}
+.canvas-more:hover {
+  color: var(--color-accent);
+}
+/* empty evening shelf: present but whisper-quiet at rest */
+.canvas-evening-empty {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--border-color) 35%, transparent);
+}
+.canvas-empty-hint {
+  margin: 0;
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-align: center;
+}

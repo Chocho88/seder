@@ -15,7 +15,20 @@ import './itemrow.css';
 
 const HOVER_DELAY = 380;
 
-export default function ItemRow({ item, depth = 0, leaf = false }: { item: Item; depth?: number; leaf?: boolean }) {
+// reference = a secondary rendering of an item that lives elsewhere (pinned
+// shelf, evening shelf): drawn lighter so the eye knows it's a pointer, not
+// a second copy.
+export default function ItemRow({
+  item,
+  depth = 0,
+  leaf = false,
+  reference = false,
+}: {
+  item: Item;
+  depth?: number;
+  leaf?: boolean;
+  reference?: boolean;
+}) {
   const { items, categories, toggleDone, openItem, openItemId, setDragItem, dragItemId, setToday, togglePinned, deleteItem } =
     useSeder();
   // every row carries its list's color as its accent, wherever it renders
@@ -70,6 +83,7 @@ export default function ItemRow({ item, depth = 0, leaf = false }: { item: Item;
           state === 'wait' ? 'item-wait' : '',
           item.done ? 'item-done' : '',
           openItemId === item.id ? 'item-open' : '',
+          reference ? 'item-reference' : '',
         ]
           .filter(Boolean)
           .join(' ')}
@@ -236,9 +250,38 @@ export default function ItemRow({ item, depth = 0, leaf = false }: { item: Item;
 
       {!leaf &&
         kids.map((k) => (
-          <ItemRow key={k.id} item={k} depth={depth + 1} />
+          <ChildSlot key={k.id} child={k}>
+            <ItemRow item={k} depth={depth + 1} />
+          </ChildSlot>
         ))}
     </>
+  );
+}
+
+/** Drop slot around a sub-item: dropping a row here reorders it under the
+    same parent (dropOn 'row:' routes to reorderChild for nested targets). */
+function ChildSlot({ child, children }: { child: Item; children: React.ReactNode }) {
+  const { dragItemId, dropOn } = useSeder();
+  const [over, setOver] = useState(false);
+  return (
+    <div
+      className={`card-slot child-slot${over ? ' insert-before' : ''}`}
+      data-drop={`row:${child.id}`}
+      onDragOver={(e) => {
+        if (!dragItemId || dragItemId === child.id) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        e.stopPropagation();
+        setOver(false);
+        void dropOn(`row:${child.id}`);
+      }}
+    >
+      {children}
+    </div>
   );
 }
 

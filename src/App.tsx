@@ -3,8 +3,7 @@ import icons from '../../design-system/icons.svg';
 import { useSeder } from './lib/store';
 import { useLang, toggleLang, t } from './lib/i18n';
 import Canvas from './components/Canvas';
-import Board from './components/Board';
-import MatrixView from './components/MatrixView';
+import { SectionShell, renderSection } from './components/Sections';
 import DetailPanel from './components/DetailPanel';
 import CaptureBar from './components/CaptureBar';
 import SettingsMenu from './components/SettingsMenu';
@@ -23,6 +22,22 @@ function useIsMobile(): boolean {
       return () => mq?.removeEventListener('change', cb);
     },
     () => mq?.matches ?? false,
+  );
+}
+
+/** Phone: the same sections, one clean scrollable column, same order. */
+function MobileCanvas() {
+  const { sections } = useSeder();
+  return (
+    <div className="mobile-canvas">
+      {sections
+        .filter((s) => s.on)
+        .map((s) => (
+          <SectionShell key={s.id} id={s.id}>
+            {renderSection(s.id)}
+          </SectionShell>
+        ))}
+    </div>
   );
 }
 
@@ -85,19 +100,7 @@ export default function App() {
       </header>
 
       <main className="seder-main">
-        {!ready ? null : isMobile ? (
-          <>
-            <section className="mobile-section">
-              <Board />
-            </section>
-            <section className="mobile-section">
-              <h2 className="mobile-section-label">{t('view_today')}</h2>
-              <MatrixView />
-            </section>
-          </>
-        ) : (
-          <Canvas />
-        )}
+        {!ready ? null : isMobile ? <MobileCanvas /> : <Canvas />}
       </main>
 
       {openItemId && <DetailPanel key={openItemId} itemId={openItemId} />}

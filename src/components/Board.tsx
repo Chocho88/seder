@@ -8,7 +8,6 @@ import { useSeder } from '../lib/store';
 import { startDrag } from '../lib/resize';
 import { t } from '../lib/i18n';
 import type { Category } from '../lib/types';
-import ItemRow from './ItemRow';
 import CategoryCard from './CategoryCard';
 import './board.css';
 
@@ -129,43 +128,10 @@ function BentoItem({ category, children }: { category: Category; children: React
 }
 
 export default function Board() {
-  const { items, categories, addCategory, dragItemId, dropOn } = useSeder();
-  const pinned = items.filter((i) => i.pinned && !i.done);
-  const [pinOver, setPinOver] = useState(false);
-  const dragUnpinned = dragItemId !== null && !items.find((i) => i.id === dragItemId)?.pinned;
+  const { categories, addCategory } = useSeder();
 
   return (
     <div className="board">
-      {(pinned.length > 0 || dragUnpinned) && (
-        <section
-          className={`board-pinned${pinOver ? ' drag-over' : ''}`}
-          data-drop="pin"
-          onDragOver={(e) => {
-            if (dragUnpinned) {
-              e.preventDefault();
-              setPinOver(true);
-            }
-          }}
-          onDragLeave={() => setPinOver(false)}
-          onDrop={() => {
-            setPinOver(false);
-            if (dragUnpinned && dragItemId) void dropOn('pin');
-          }}
-        >
-          <header className="board-pinned-header">
-            <span className="board-pinned-glyph" aria-hidden />
-            <h2 className="board-pinned-title">{t('pinned')}</h2>
-            <span className="board-pinned-count">{pinned.length}</span>
-          </header>
-          <div className="board-pinned-items">
-            {pinned.map((i) => (
-              <div key={i.id} className="board-pin-chip">
-                <ItemRow item={i} leaf />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
       <div className="board-bento">
         {categories.map((c) => (
           <BentoItem key={c.id} category={c}>

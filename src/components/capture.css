@@ -354,3 +354,16 @@
 .capture-cat.active .cat-dot {
   background: var(--color-white);
 }
+
+/* where a match was found, when not in the title */
+.capture-match-where {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  border: 1px solid color-mix(in srgb, var(--border-color) 30%, transparent);
+  border-radius: var(--radius-full);
+  padding: 0 var(--space-1-5);
+  line-height: 1.5;
+}
+.capture-match.is-archived .capture-match-title {
+  color: var(--text-secondary);
+}

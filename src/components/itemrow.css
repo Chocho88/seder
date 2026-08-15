@@ -449,3 +449,13 @@
   padding: var(--space-1) var(--space-2);
   text-align: start;
 }
+
+/* --- Reference rendering: a pointer to an item that lives elsewhere.
+   Lighter title, a small link glyph before it - "same thing, seen from
+   here", never a duplicate. --- */
+.item-reference .item-title {
+  color: var(--text-secondary);
+}
+.item-reference .item-check {
+  border-style: dotted;
+}

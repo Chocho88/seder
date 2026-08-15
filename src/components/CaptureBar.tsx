@@ -3,10 +3,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import icons from '../../../design-system/icons.svg';
+import { db } from '../lib/db';
 import { useSeder } from '../lib/store';
 import { useLang } from '../lib/i18n';
 import { dirProps } from '../lib/rtl';
 import { parseDueDate, formatDue } from '../lib/dates';
+import type { Item } from '../lib/types';
 import './capture.css';
 
 // Footer syntax-hint labels (chrome strings local to this bar; the shared
@@ -17,7 +19,8 @@ const HINT_LABELS = {
 } as const;
 
 export default function CaptureBar() {
-  const { captureOpen, captureDictate, setCaptureOpen, categories, items, addItem, openItem } = useSeder();
+  const { captureOpen, captureDictate, setCaptureOpen, categories, items, addItem, openItem, setLogbookOpen } =
+    useSeder();
   const [lang, t] = useLang();
   // Resting state stays a three-word invitation; the #/! cheat-sheet lives in
   // the footer as keycap tokens, so strip the parenthetical from the dict string.
@@ -95,11 +98,36 @@ export default function CaptureBar() {
     return { title: rest.trim(), today, category, due };
   }, [text, categories, chosenCatId, pool, dateOff]);
 
-  const matches = useMemo(() => {
+  // Quick find: titles first, then notes, then the archive (loaded lazily,
+  // only while typing). Each match remembers where it was found.
+  const [archived, setArchived] = useState<Item[]>([]);
+  useEffect(() => {
+    if (!captureOpen) {
+      setArchived([]);
+      return;
+    }
+    if (text.trim().length >= 2 && archived.length === 0) {
+      void db.items
+        .filter((i) => i.archivedAt !== null)
+        .toArray()
+        .then(setArchived);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [captureOpen, text]);
+
+  const matches = useMemo<{ item: Item; where: 'title' | 'notes' | 'archived' }[]>(() => {
     const q = text.trim().toLowerCase();
     if (q.length < 2) return [];
-    return items.filter((i) => !i.done && i.title.toLowerCase().includes(q)).slice(0, 5);
-  }, [text, items]);
+    const live = items.filter((i) => !i.done);
+    const byTitle = live.filter((i) => i.title.toLowerCase().includes(q)).map((item) => ({ item, where: 'title' as const }));
+    const byNotes = live
+      .filter((i) => !i.title.toLowerCase().includes(q) && (i.notes.toLowerCase().includes(q) || i.nextMove.toLowerCase().includes(q)))
+      .map((item) => ({ item, where: 'notes' as const }));
+    const byArchive = archived
+      .filter((i) => i.title.toLowerCase().includes(q) || i.notes.toLowerCase().includes(q))
+      .map((item) => ({ item, where: 'archived' as const }));
+    return [...byTitle, ...byNotes, ...byArchive].slice(0, 7);
+  }, [text, items, archived]);
 
   const catOf = (id: string) => categories.find((c) => c.id === id);
 
@@ -109,8 +137,13 @@ export default function CaptureBar() {
     setCaptureOpen(false);
   };
 
-  const openMatch = (id: string) => {
-    openItem(id);
+  const openMatch = (id: string, fromArchive = false) => {
+    if (fromArchive) {
+      // archived items aren't in the live store: open the logbook instead
+      setLogbookOpen(true);
+    } else {
+      openItem(id);
+    }
     setCaptureOpen(false);
   };
 
@@ -169,7 +202,7 @@ export default function CaptureBar() {
                 e.preventDefault();
                 setSel((s) => (s <= 0 ? matches.length - 1 : s - 1));
               } else if (e.key === 'Enter') {
-                if (sel >= 0 && matches[sel]) openMatch(matches[sel].id);
+                if (sel >= 0 && matches[sel]) openMatch(matches[sel].item.id, matches[sel].where === 'archived');
                 else void submit();
               } else if (e.key === 'Escape') {
                 setCaptureOpen(false);
@@ -241,24 +274,30 @@ export default function CaptureBar() {
 
         {matches.length > 0 && (
           <div className="capture-matches" role="listbox">
-            {matches.map((m, i) => {
+            {matches.map(({ item: m, where }, i) => {
               const cat = catOf(m.categoryId);
+              const catName = cat?.system ? t('pool') : cat?.name;
               return (
                 <button
                   key={m.id}
                   role="option"
                   aria-selected={i === sel}
-                  className={`capture-match ${i === sel ? 'is-selected' : ''}`}
-                  onClick={() => openMatch(m.id)}
+                  className={`capture-match ${i === sel ? 'is-selected' : ''}${where === 'archived' ? ' is-archived' : ''}`}
+                  onClick={() => openMatch(m.id, where === 'archived')}
                   onMouseEnter={() => setSel(i)}
                 >
                   <span className="cat-dot" data-cat={cat?.colorKey} />
                   <span className="capture-match-title" {...dirProps(m.title)}>
                     {m.title}
                   </span>
-                  {cat && (
-                    <span className="capture-match-cat" {...dirProps(cat.name)}>
-                      {cat.name}
+                  {where !== 'title' && (
+                    <span className="capture-match-where">
+                      {where === 'notes' ? t('search_notes_hint') : t('search_archived_hint')}
+                    </span>
+                  )}
+                  {catName && (
+                    <span className="capture-match-cat" {...dirProps(catName)}>
+                      {catName}
                     </span>
                   )}
                 </button>

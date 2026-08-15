@@ -26,7 +26,26 @@
     padding-block-end: calc(96px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* --- Mobile home: stacked sections with quiet labels --- */
+  /* --- Mobile home: the same sections as desktop, one column --- */
+  .mobile-canvas {
+    display: flex;
+    flex-direction: column;
+    padding-inline: var(--space-1);
+  }
+  .mobile-canvas .section-shell + .section-shell {
+    margin-block-start: var(--space-6);
+  }
+  /* no hover on phones: the section handle rides inside, top-end corner,
+     always faintly visible so reordering stays discoverable */
+  .mobile-canvas .section-handle {
+    inset-inline-start: auto;
+    inset-inline-end: 0;
+    top: -2px;
+    opacity: 0.35;
+  }
+  .mobile-canvas .canvas-date-label {
+    font-size: var(--text-xl);
+  }
   .mobile-section + .mobile-section {
     margin-block-start: var(--space-8);
   }

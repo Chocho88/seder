@@ -156,3 +156,79 @@ html[data-fontsize='l'] {
 .settings-action:hover .icon {
   color: var(--text-secondary);
 }
+
+/* --- Sections editor --- */
+.settings-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-sections-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.settings-link {
+  border: none;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: 0;
+}
+.settings-link:hover {
+  color: var(--color-accent);
+}
+.settings-hint {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+.settings-section-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-1-5);
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  border-block-start: 2px solid transparent;
+}
+.settings-section-row:active {
+  cursor: grabbing;
+}
+.settings-section-row.over {
+  border-block-start-color: var(--color-accent);
+}
+.settings-section-row.dragging {
+  opacity: 0.5;
+}
+.settings-grip {
+  width: 12px;
+  height: 12px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+.settings-section-name {
+  flex: 1;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+.settings-switch-sm {
+  width: 30px;
+  height: 18px;
+}
+.settings-switch-sm .settings-knob {
+  width: 12px;
+  height: 12px;
+}
+.settings-switch-sm.on .settings-knob {
+  transform: translateX(12px);
+}
+[dir='rtl'] .settings-panel .settings-switch-sm.on .settings-knob {
+  transform: translateX(-12px);
+}
+.settings-switch:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
