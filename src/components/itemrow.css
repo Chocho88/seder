@@ -184,39 +184,36 @@
   color: var(--row-accent);
 }
 
-/* --- Hover actions: icon buttons that surface under the hand,
-   docked at the row's inline-end. Reserved zero width at rest via
-   absolute positioning so nothing shifts. --- */
+/* --- Hover actions: an in-flow flex sibling at the row's END. Zero width
+   at rest (nothing shifts), grows on hover. Being in normal flow - not an
+   overlay - it can never overhang the card or sit on top of the title:
+   the title shrinks (ellipsis) to make room instead. --- */
 .item-row {
   position: relative;
 }
 .item-actions {
-  position: absolute;
-  /* dock INSIDE the row's own inline-end edge, never past it - the row's
-     8px padding is the margin, so the pill sits flush with the text block */
-  inset-inline-end: var(--space-2);
-  top: 50%;
-  transform: translateY(-50%);
   display: inline-flex;
   gap: 2px;
+  margin-inline-start: auto;
+  flex-shrink: 0;
+  width: 0;
+  overflow: hidden;
   opacity: 0;
   pointer-events: none;
-  max-width: calc(100% - var(--space-4));
   transition: opacity var(--duration-fast) var(--ease-default);
-  /* a clean card-surface pill with a soft lift — deliberate over
-     tinted washes, invisible-quiet over white */
   background: var(--surface-card);
   box-shadow: var(--shadow-sm);
   border-radius: var(--radius-sm);
   padding: 1px;
 }
 .item-row:hover .item-actions {
+  width: auto;
   opacity: 1;
   pointer-events: auto;
 }
 @media (hover: none) {
   .item-actions {
-    display: none; /* phones act via the detail sheet */
+    display: none; /* phones act via the more-menu / detail sheet */
   }
 }
 .item-action {

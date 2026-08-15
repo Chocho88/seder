@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "shot": "node scripts/shot.mjs"
+    "shot": "node scripts/shot.mjs",
+    "check:geometry": "node scripts/geometry-check.mjs",
+    "check": "tsc --noEmit && node scripts/geometry-check.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
