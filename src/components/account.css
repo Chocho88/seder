@@ -14,7 +14,9 @@
 .account-panel {
   position: absolute;
   top: calc(100% + 10px);
-  right: 0;
+  /* the button lives at the header's LEFT edge (app-header-left), so the
+     panel must open toward the right - never anchor to `right: 0` here */
+  left: 0;
   z-index: var(--z-popover);
   width: 16em;
   background: var(--surface-card);
