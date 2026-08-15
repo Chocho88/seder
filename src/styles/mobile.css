@@ -35,13 +35,17 @@
   .mobile-canvas .section-shell + .section-shell {
     margin-block-start: var(--space-6);
   }
-  /* no hover on phones: the section handle rides inside, top-end corner,
-     always faintly visible so reordering stays discoverable */
+  /* Phone: no hover, no HTML5 drag - the section handle would only be
+     debris here (Settings > Sections has arrows for reordering). Hide it. */
   .mobile-canvas .section-handle {
-    inset-inline-start: auto;
-    inset-inline-end: 0;
-    top: -2px;
-    opacity: 0.35;
+    display: none;
+  }
+  /* the logbook entry hugs the date text instead of flying to the far edge */
+  .mobile-canvas .canvas-date {
+    gap: var(--space-2);
+  }
+  .mobile-canvas .canvas-logbook-btn {
+    margin-inline-start: var(--space-1);
   }
   .mobile-canvas .canvas-date-label {
     font-size: var(--text-xl);
@@ -186,5 +190,20 @@
 @media (max-width: 768px) {
   .matrix-card {
     grid-area: 2 / 1 / 5 / 3;
+  }
+}
+
+@media (max-width: 768px) {
+  /* an empty Evening shelf on a phone is one quiet line, not a hollow card */
+  .canvas-evening-empty {
+    border-color: transparent;
+    background: transparent;
+  }
+  .canvas-evening-empty .canvas-section-label {
+    border-block-end: none;
+    padding-block: var(--space-2);
+  }
+  .canvas-evening-empty .canvas-card-body {
+    display: none;
   }
 }
