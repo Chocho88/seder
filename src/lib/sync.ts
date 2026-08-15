@@ -76,7 +76,7 @@ export async function pullChanges(): Promise<boolean> {
   let changed = false;
   let maxSeen = since;
   for (const table of ['items', 'categories'] as Table[]) {
-    const { data, error } = await supabase.from(table).select('*').gt('updated_at', since).order('updated_at');
+    const { data, error } = await supabase.from(table).select('*').eq('user_id', session.user.id).gt('updated_at', since).order('updated_at');
     if (error) {
       console.warn('[sync] pull failed', table, error.message);
       return changed;

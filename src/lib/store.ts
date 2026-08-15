@@ -116,6 +116,38 @@ interface SederState {
   restoreItem(id: string): Promise<void>;
 }
 
+/** The Pool's canonical id for the current owner (user id if signed in). */
+async function poolIdFor(): Promise<string> {
+  const owner = (await db.meta.get('owner'))?.value as string | undefined;
+  return owner ? `pool-${owner}` : 'pool-local';
+}
+
+/** Ensure exactly one Pool exists under the canonical id; fold strays in. */
+export async function ensurePool(): Promise<void> {
+  const want = await poolIdFor();
+  const pools = await db.categories.filter((c) => c.system === true).toArray();
+  await db.transaction('rw', db.categories, db.items, async () => {
+    let canonical = pools.find((p) => p.id === want);
+    if (!canonical) {
+      // adopt the first existing pool (rename) or create a fresh one
+      const first = pools[0];
+      canonical = first
+        ? { ...first, id: want }
+        : { id: want, name: 'Pool', colorKey: 'fog', order: -1, archived: false, system: true };
+      await db.categories.put(canonical);
+      if (first) {
+        await db.items.where('categoryId').equals(first.id).modify({ categoryId: want });
+        await db.categories.delete(first.id);
+      }
+    }
+    for (const sp of pools) {
+      if (sp.id === want || sp.id === canonical!.id) continue;
+      await db.items.where('categoryId').equals(sp.id).modify({ categoryId: want });
+      await db.categories.delete(sp.id);
+    }
+  });
+}
+
 async function loadAll(): Promise<{ items: Item[]; categories: Category[] }> {
   const [items, categories] = await Promise.all([
     db.items.filter((i) => i.archivedAt === null).toArray(),
@@ -161,23 +193,11 @@ export const useSeder = create<SederState>((set, get) => {
     // fresh device starts empty and fills from sync after sign-in.
     if (import.meta.env.DEV || wantsFreshSeed()) await seedIfEmpty(wantsFreshSeed());
 
-    // The Pool: the basic intake list. Fixed id makes creation idempotent
-    // (init can run twice under StrictMode); stray duplicates get removed.
-    const pools = await db.categories.filter((c) => c.system === true).toArray();
-    if (!pools.some((p) => p.id === 'pool-system')) {
-      await db.categories.put({
-        id: 'pool-system',
-        name: 'Pool',
-        colorKey: 'fog',
-        order: -1,
-        archived: false,
-        system: true,
-      });
-    }
-    const strays = pools.filter((p) => p.id !== 'pool-system');
-    if (strays.length > 0) {
-      await db.categories.bulkDelete(strays.map((p) => p.id));
-    }
+    // The Pool: the basic intake list. Its id is deterministic PER USER
+    // ('pool-<userId>') so every device of one account agrees on the same
+    // row and different accounts never collide on the shared table. Before
+    // sign-in it's a local id; on first sign-in it's renamed to the user's.
+    await ensurePool();
 
     // One-time cleanup: the user never wants an em-dash anywhere.
     await db.items
