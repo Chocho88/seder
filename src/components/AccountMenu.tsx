@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import icons from '../../vendor/design-system/icons.svg';
-import { useAuth, signInWithGoogle, signOut, syncNow } from '../lib/auth';
+import { useAuth, signInWithEmail, signOut, syncNow } from '../lib/auth';
 import { t, useLang } from '../lib/i18n';
 import './account.css';
 
@@ -11,7 +11,16 @@ export default function AccountMenu() {
   const auth = useAuth();
   useLang();
   const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [sent, setSent] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const ref = useRef<HTMLDivElement>(null);
+
+  const sendLink = async () => {
+    if (!email.trim()) return;
+    setSent('sending');
+    const { error } = await signInWithEmail(email.trim());
+    setSent(error ? 'error' : 'sent');
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -67,15 +76,35 @@ export default function AccountMenu() {
           ) : (
             <>
               <p className="account-hint">{t('sign_in_hint')}</p>
-              <button className="account-google pressable" onClick={() => void signInWithGoogle()}>
-                <svg className="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
-                  <path fill="currentColor" d="M21.6 12.2c0-.7-.1-1.3-.2-1.9H12v3.7h5.4c-.2 1.2-.9 2.3-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3z" />
-                  <path fill="currentColor" d="M12 22c2.7 0 5-.9 6.6-2.4l-3.2-2.5c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6C4.7 19.8 8.1 22 12 22z" opacity=".8" />
-                  <path fill="currentColor" d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3.1C2.4 8.8 2 10.4 2 12s.4 3.2 1.1 4.6L6.4 14z" opacity=".6" />
-                  <path fill="currentColor" d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.9-2.9C17 2.9 14.7 2 12 2 8.1 2 4.7 4.2 3.1 7.4L6.4 10c.8-2.3 3-4.1 5.6-4.1z" opacity=".9" />
-                </svg>
-                {t('sign_in_google')}
-              </button>
+              {sent === 'sent' ? (
+                <p className="account-sent">{t('magic_sent')}</p>
+              ) : (
+                <form
+                  className="account-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void sendLink();
+                  }}
+                >
+                  <input
+                    className="account-email"
+                    type="email"
+                    inputMode="email"
+                    autoComplete="email"
+                    placeholder={t('email_placeholder')}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    dir="ltr"
+                  />
+                  <button className="account-google pressable" type="submit" disabled={sent === 'sending'}>
+                    <svg className="icon icon-sm" aria-hidden="true">
+                      <use href={`${icons}#icon-send`} />
+                    </svg>
+                    {sent === 'sending' ? '…' : t('send_magic_link')}
+                  </button>
+                  {sent === 'error' && <p className="account-error">{t('magic_error')}</p>}
+                </form>
+              )}
             </>
           )}
         </div>

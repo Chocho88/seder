@@ -58,6 +58,16 @@ export async function signInWithGoogle(): Promise<void> {
   });
 }
 
+/** Magic link: no passwords, no OAuth console - an email with a one-tap link. */
+export async function signInWithEmail(email: string): Promise<{ error: string | null }> {
+  if (!supabase) return { error: 'unconfigured' };
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: window.location.origin },
+  });
+  return { error: error?.message ?? null };
+}
+
 export async function signOut(): Promise<void> {
   if (!supabase) return;
   await supabase.auth.signOut();
