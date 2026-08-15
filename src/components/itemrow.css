@@ -192,13 +192,16 @@
 }
 .item-actions {
   position: absolute;
-  inset-inline-end: var(--space-1-5);
+  /* dock INSIDE the row's own inline-end edge, never past it - the row's
+     8px padding is the margin, so the pill sits flush with the text block */
+  inset-inline-end: var(--space-2);
   top: 50%;
   transform: translateY(-50%);
   display: inline-flex;
   gap: 2px;
   opacity: 0;
   pointer-events: none;
+  max-width: calc(100% - var(--space-4));
   transition: opacity var(--duration-fast) var(--ease-default);
   /* a clean card-surface pill with a soft lift — deliberate over
      tinted washes, invisible-quiet over white */

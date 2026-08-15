@@ -178,7 +178,9 @@ export default function CategoryCard({ category }: { category: Category }) {
             {displayName}
           </h2>
         )}
-        <span className="category-card-count">{open.length}</span>
+        <span className={`category-card-count${open.length === 0 && done.length > 0 ? ' all-done' : ''}`}>
+          {open.length > 0 ? open.length : done.length > 0 ? `${done.length} ✓` : 0}
+        </span>
 
         {/* header hover actions - quiet until needed */}
         <span className="category-card-tools">

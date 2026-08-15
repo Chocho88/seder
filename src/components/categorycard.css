@@ -276,3 +276,14 @@
   flex: 1;
   border-block-start: 1px solid color-mix(in srgb, var(--border-color) 20%, transparent);
 }
+
+/* nothing inside a card may poke past its frame (hover pills, chips) */
+.category-card-body {
+  overflow-x: clip;
+}
+.category-card-count.all-done {
+  color: var(--color-accent-dark);
+}
+[data-theme='dark'] .category-card-count.all-done {
+  color: var(--color-accent);
+}
