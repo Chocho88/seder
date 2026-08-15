@@ -2,7 +2,7 @@
 // Doubles as search. Mic button uses Web Speech dictation (phase 1: no AI).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import icons from '../../../design-system/icons.svg';
+import icons from '../../vendor/design-system/icons.svg';
 import { db } from '../lib/db';
 import { useSeder } from '../lib/store';
 import { useLang } from '../lib/i18n';

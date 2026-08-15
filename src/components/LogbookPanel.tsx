@@ -3,7 +3,7 @@
 // archived items never weigh down the live store.
 
 import { useEffect, useMemo, useState } from 'react';
-import icons from '../../../design-system/icons.svg';
+import icons from '../../vendor/design-system/icons.svg';
 import { db } from '../lib/db';
 import { useSeder } from '../lib/store';
 import { t, useLang } from '../lib/i18n';

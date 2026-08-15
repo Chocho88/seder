@@ -3,7 +3,7 @@
 // (morning suggestions), and data (logbook, backup export/import, layout reset).
 
 import { useEffect, useRef, useState } from 'react';
-import icons from '../../../design-system/icons.svg';
+import icons from '../../vendor/design-system/icons.svg';
 import { db } from '../lib/db';
 import { useSeder } from '../lib/store';
 import { setFontSize, setColoredLists, getThemeMode, applyThemeMode, type ThemeMode } from '../lib/urlState';

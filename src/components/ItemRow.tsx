@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import icons from '../../../design-system/icons.svg';
+import icons from '../../vendor/design-system/icons.svg';
 import { useSeder, childrenOf, todayAgeDays } from '../lib/store';
 import { itemState, itemVerb, itemWaitingFor } from '../lib/nextMove';
 import { dirProps } from '../lib/rtl';

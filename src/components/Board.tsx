@@ -3,7 +3,7 @@
 // scrolls). Natural-height cards are measured and packed automatically.
 
 import { useLayoutEffect, useRef, useState } from 'react';
-import icons from '../../../design-system/icons.svg';
+import icons from '../../vendor/design-system/icons.svg';
 import { useSeder } from '../lib/store';
 import { startDrag } from '../lib/resize';
 import { t } from '../lib/i18n';

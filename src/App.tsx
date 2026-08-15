@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import icons from '../../design-system/icons.svg';
+import icons from '../vendor/design-system/icons.svg';
 import { useSeder } from './lib/store';
 import { useLang, toggleLang, t } from './lib/i18n';
 import Canvas from './components/Canvas';
@@ -11,6 +11,7 @@ import MobileBar from './components/MobileBar';
 import Toast from './components/Toast';
 import TouchDragLayer from './components/TouchDragLayer';
 import LogbookPanel from './components/LogbookPanel';
+import AccountMenu from './components/AccountMenu';
 
 // One clean scrollable column on phones: lists on top, matrix below (the
 // user's whiteboard sketch). Desktop is the holistic canvas — no tabs.
@@ -72,7 +73,9 @@ export default function App() {
   return (
     <div className="seder-shell">
       <header className="app-header">
-        <div className="app-header-left" />
+        <div className="app-header-left">
+          <AccountMenu />
+        </div>
         <div className="app-header-center">
           {/* The wordmark is always the Hebrew brand, in Migdal Haemeq */}
           <span className="app-logo-text">סדר</span>

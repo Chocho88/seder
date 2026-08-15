@@ -1,0 +1,285 @@
+/* ============================================
+   KLOD Design System — Clean Preset
+   Minimal, airy, pure B&W, system fonts
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Hebrew:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* --- Identity --- */
+  --preset: "clean";
+
+  /* --- App Accent (override per-app) --- */
+  --color-accent: #525252;
+  --color-accent-light: #d4d4d4;
+  --color-accent-dark: #262626;
+  --color-accent-subtle: rgba(82, 82, 82, 0.06);
+  --color-accent-muted: rgba(82, 82, 82, 0.12);
+
+  /* --- Black & White Core --- */
+  --color-black: #000000;
+  --color-white: #ffffff;
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-200: #e5e5e5;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-500: #737373;
+  --color-neutral-600: #525252;
+  --color-neutral-700: #404040;
+  --color-neutral-800: #262626;
+  --color-neutral-900: #171717;
+  --color-neutral-950: #0a0a0a;
+
+  /* --- Semantic --- */
+  --color-success: #16a34a;
+  --color-success-light: #f0fdf4;
+  --color-warning: #ca8a04;
+  --color-warning-light: #fefce8;
+  --color-error: #dc2626;
+  --color-error-light: #fef2f2;
+  --color-info: #6b7280;
+  --color-info-light: #f3f4f6;
+
+  /* --- Surfaces (Light) --- */
+  --surface-page: var(--color-white);
+  --surface-card: var(--color-white);
+  --surface-raised: var(--color-white);
+  --surface-overlay: rgba(0, 0, 0, 0.25);
+  --surface-sunken: var(--color-neutral-50);
+  --surface-inverse: var(--color-neutral-950);
+  --surface-header: var(--color-white);
+
+  /* --- Text (Light) --- */
+  --text-primary: var(--color-neutral-900);
+  --text-secondary: var(--color-neutral-500);
+  --text-tertiary: var(--color-neutral-400);
+  --text-disabled: var(--color-neutral-300);
+  --text-inverse: var(--color-white);
+  --text-link: var(--color-neutral-900);
+  --text-link-hover: var(--color-black);
+
+  /* --- Typography --- */
+  --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-heading: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-data: "SF Mono", "Menlo", "Monaco", "Cascadia Mono", monospace;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", sans-serif;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.6;
+  --leading-relaxed: 1.8;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.01em;
+  --tracking-wider: 0.025em;
+  --tracking-caps: 0.06em;
+
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* --- Spacing --- */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: 0.125rem;
+  --space-1: 0.25rem;
+  --space-1-5: 0.375rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+  --space-32: 8rem;
+
+  /* --- Layout --- */
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1200px;
+  --container-2xl: 1400px;
+  --content-width: 640px;
+
+  /* --- Borders --- */
+  --border-width-thin: 1px;
+  --border-width-medium: 1px;
+  --border-width-thick: 2px;
+  --border-color: var(--color-neutral-200);
+  --border-color-strong: var(--color-neutral-300);
+  --border-color-focus: var(--color-neutral-900);
+
+  --radius-none: 0;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* --- Shadows (almost invisible) --- */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 8px 16px rgba(0, 0, 0, 0.05);
+  --shadow-inner: inset 0 1px 1px rgba(0, 0, 0, 0.02);
+
+  /* --- Transitions --- */
+  --duration-instant: 0ms;
+  --duration-fast: 120ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 450ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.3, 0.64, 1);
+
+  /* --- Z-Index --- */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-header: 250;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-popover: 500;
+  --z-toast: 600;
+  --z-tooltip: 700;
+
+  /* --- Opacity --- */
+  --opacity-disabled: 0.45;
+  --opacity-placeholder: 0.45;
+  --opacity-hover: 0.03;
+  --opacity-overlay: 0.25;
+
+  /* --- Focus --- */
+  --focus-ring: 0 0 0 2px var(--surface-card), 0 0 0 4px var(--color-neutral-900);
+
+  /* --- Component Tokens --- */
+  --btn-padding-x: var(--space-5);
+  --btn-padding-y: 0.625rem;
+  --btn-radius: var(--radius-md);
+  --btn-font: var(--font-ui);
+  --btn-size: var(--text-sm);
+  --btn-weight: var(--weight-medium);
+  --btn-text-transform: none;
+  --btn-letter-spacing: var(--tracking-normal);
+  --btn-border-width: var(--border-width-thin);
+  --btn-shadow: none;
+  --btn-shadow-hover: var(--shadow-xs);
+
+  --input-padding-x: var(--space-3);
+  --input-padding-y: 0.625rem;
+  --input-radius: var(--radius-md);
+  --input-border: var(--border-width-thin) solid var(--border-color);
+  --input-bg: var(--color-white);
+  --input-font: var(--font-body);
+
+  --card-padding: var(--space-6);
+  --card-radius: var(--radius-lg);
+  --card-shadow: none;
+  --card-border: var(--border-width-thin) solid var(--border-color);
+  --card-bg: var(--surface-card);
+
+  --badge-padding-x: var(--space-2);
+  --badge-padding-y: var(--space-0-5);
+  --badge-radius: var(--radius-full);
+  --badge-font-size: var(--text-xs);
+  --badge-weight: var(--weight-medium);
+  --badge-text-transform: none;
+  --badge-letter-spacing: var(--tracking-normal);
+
+  --header-height: 52px;
+  --header-bg: var(--surface-header);
+  --header-border: var(--border-width-thin) solid var(--border-color);
+  --header-shadow: none;
+
+  --sidebar-width: 240px;
+}
+
+/* --- Dark Mode --- */
+[data-theme="dark"] {
+  --surface-page: var(--color-neutral-950);
+  --surface-card: var(--color-neutral-900);
+  --surface-raised: var(--color-neutral-800);
+  --surface-overlay: rgba(0, 0, 0, 0.5);
+  --surface-sunken: var(--color-neutral-950);
+  --surface-inverse: var(--color-white);
+  --surface-header: var(--color-neutral-950);
+
+  --text-primary: var(--color-neutral-100);
+  --text-secondary: var(--color-neutral-400);
+  --text-tertiary: var(--color-neutral-600);
+  --text-disabled: var(--color-neutral-700);
+  --text-inverse: var(--color-neutral-950);
+  --text-link: var(--color-neutral-100);
+  --text-link-hover: var(--color-white);
+
+  --border-color: var(--color-neutral-800);
+  --border-color-strong: var(--color-neutral-700);
+
+  --input-bg: var(--color-neutral-900);
+
+  --header-bg: var(--color-neutral-950);
+}
+
+/* --- Hebrew / RTL Font Override --- */
+[lang="he"],
+[dir="rtl"] {
+  --font-display: "Noto Sans Hebrew", sans-serif;
+  --font-heading: "Noto Sans Hebrew", sans-serif;
+  --font-body: "Noto Sans Hebrew", sans-serif;
+  --font-data: "Heshbon", "Courier New", "Courier", monospace;
+  --font-ui: "Noto Sans Hebrew", sans-serif;
+}
+
+/* --- Hebrew Font Variants (use data-font-he attribute) --- */
+[lang="he"][data-font-he="yarden"],
+[dir="rtl"][data-font-he="yarden"] {
+  --font-display: "Yarden", "Noto Sans Hebrew", sans-serif;
+  --font-heading: "Yarden", "Noto Sans Hebrew", sans-serif;
+  --font-body: "Yarden", "Noto Sans Hebrew", sans-serif;
+  --font-ui: "Yarden", "Noto Sans Hebrew", sans-serif;
+}
+
+[lang="he"][data-font-he="migdal"],
+[dir="rtl"][data-font-he="migdal"] {
+  --font-display: "Migdal Haemeq", "Noto Sans Hebrew", sans-serif;
+  --font-heading: "Migdal Haemeq", "Noto Sans Hebrew", sans-serif;
+}
+
+[lang="he"][data-font-he="heshbon"],
+[dir="rtl"][data-font-he="heshbon"] {
+  --font-display: "Heshbon", "Noto Sans Hebrew", sans-serif;
+  --font-heading: "Heshbon", "Noto Sans Hebrew", sans-serif;
+  --font-body: "Heshbon", "Noto Sans Hebrew", sans-serif;
+  --font-ui: "Heshbon", "Noto Sans Hebrew", sans-serif;
+}
+
+[lang="he"][data-font-he="asakim"],
+[dir="rtl"][data-font-he="asakim"] {
+  --font-display: "Asakim", "Noto Sans Hebrew", sans-serif;
+  --font-heading: "Asakim", "Noto Sans Hebrew", sans-serif;
+}

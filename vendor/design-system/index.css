@@ -1,0 +1,22 @@
+/* ============================================
+   KLOD Design System — Entry Point
+
+   Usage:
+   1. Import your chosen preset FIRST:
+      @import "../design-system/presets/classic.css";
+      — or punchy.css, clean.css, glass.css
+
+   2. Then import this file:
+      @import "../design-system/index.css";
+
+   3. Add to your HTML:
+      <html lang="en" dir="ltr" data-theme="light" data-preset="classic">
+
+   4. Init toggles (optional):
+      import { initDesignSystem } from '../design-system/theme-toggle.js';
+      initDesignSystem();
+   ============================================ */
+
+@import "./base.css";
+@import "./components.css";
+@import "./utilities.css";

@@ -73,6 +73,12 @@ const DICT: Record<string, { en: string; he: string }> = {
   resize_hint: { en: 'Drag to resize · double-click to reset', he: 'גרירה לשינוי גודל · לחיצה כפולה לאיפוס' },
   custom_color: { en: 'Custom', he: 'מותאם' },
   sections: { en: 'Sections', he: 'אזורים' },
+  account: { en: 'Account', he: 'חשבון' },
+  synced: { en: 'Syncing across your devices', he: 'מסתנכרן בין המכשירים שלך' },
+  sync_now: { en: 'Sync now', he: 'לסנכרן עכשיו' },
+  sign_out: { en: 'Sign out', he: 'להתנתק' },
+  sign_in_google: { en: 'Continue with Google', he: 'להמשיך עם Google' },
+  sign_in_hint: { en: 'Sign in to sync between your Mac and iPhone. Everything stays on this device until you do.', he: 'התחברות מסנכרנת בין המק לאייפון. עד אז הכל נשאר במכשיר הזה.' },
   evening_empty: { en: 'Drop a task here for tonight', he: 'גררו לכאן משימה להערב' },
   sections_hint: { en: 'Drag to reorder · toggle to show', he: 'גרירה לסידור · מתג להצגה' },
   section_date: { en: 'Date', he: 'תאריך' },
@@ -97,8 +103,26 @@ const DICT: Record<string, { en: string; he: string }> = {
   size_l: { en: 'L', he: 'ג' },
 };
 
-let currentLang: Lang = (localStorage.getItem('klod-lang') as Lang) || 'he';
+// The <html lang> attribute is the single source of truth (urlState applies
+// ?lang= to it before React mounts); localStorage is only the memory.
+const readLang = (): Lang => {
+  const attr = document.documentElement.getAttribute('lang');
+  if (attr === 'en' || attr === 'he') return attr;
+  return (localStorage.getItem('klod-lang') as Lang) || 'he';
+};
+let currentLang: Lang = readLang();
 const listeners = new Set<() => void>();
+
+// If something else flips <html lang> (urlState, dev tools), follow it.
+if (typeof MutationObserver !== 'undefined') {
+  new MutationObserver(() => {
+    const next = readLang();
+    if (next !== currentLang) {
+      currentLang = next;
+      listeners.forEach((l) => l());
+    }
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+}
 
 export function t(key: string): string {
   const e = DICT[key];

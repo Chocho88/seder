@@ -12,7 +12,11 @@
   top: calc(100% + 10px);
   right: 0;
   z-index: var(--z-popover);
-  width: 264px;
+  /* em-based so the panel grows with the font-size setting; the controls
+     never outgrow their row again (the L-size clipping bug) */
+  width: min(19em, calc(100vw - 2 * var(--space-4)));
+  max-height: calc(100vh - var(--header-height) - var(--space-6));
+  overflow-y: auto;
   background: var(--surface-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
@@ -21,6 +25,15 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+}
+@media (max-width: 768px) {
+  .settings-panel {
+    position: fixed;
+    top: calc(var(--header-height) + var(--space-2));
+    right: var(--space-3);
+    left: var(--space-3);
+    width: auto;
+  }
 }
 [dir='rtl'] .settings-panel {
   direction: rtl;
@@ -32,12 +45,20 @@
   justify-content: space-between;
   gap: var(--space-3);
   min-height: 28px;
+  min-width: 0;
+}
+.settings-row > .settings-seg,
+.settings-row > .settings-switch {
+  flex-shrink: 0;
 }
 .settings-label {
   font-size: var(--text-sm);
   font-weight: var(--weight-regular);
   color: var(--text-primary);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 /* Segmented control: sunken track, white active pill on a hairline */

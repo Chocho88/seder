@@ -1,0 +1,304 @@
+/* ============================================
+   KLOD Design System — Glassmorphism Preset
+   Frosted glass, depth, B&W + transparency
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Hebrew:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* --- Identity --- */
+  --preset: "glass";
+
+  /* --- App Accent (override per-app) --- */
+  --color-accent: #6382ff;
+  --color-accent-light: #b1c1ff;
+  --color-accent-dark: #3d56cc;
+  --color-accent-subtle: rgba(99, 130, 255, 0.1);
+  --color-accent-muted: rgba(99, 130, 255, 0.2);
+
+  /* --- Black & White Core --- */
+  --color-black: #000000;
+  --color-white: #ffffff;
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #f4f5f7;
+  --color-neutral-100: #e4e6ea;
+  --color-neutral-200: #c8ccd5;
+  --color-neutral-300: #a3a9b7;
+  --color-neutral-400: #7d8597;
+  --color-neutral-500: #5c6478;
+  --color-neutral-600: #454c5e;
+  --color-neutral-700: #333848;
+  --color-neutral-800: #222633;
+  --color-neutral-900: #151821;
+  --color-neutral-950: #0b0d14;
+
+  /* --- Semantic --- */
+  --color-success: #34d399;
+  --color-success-light: rgba(52, 211, 153, 0.15);
+  --color-warning: #fbbf24;
+  --color-warning-light: rgba(251, 191, 36, 0.15);
+  --color-error: #f87171;
+  --color-error-light: rgba(248, 113, 113, 0.15);
+  --color-info: #6382ff;
+  --color-info-light: rgba(99, 130, 255, 0.15);
+
+  /* --- Glass Tokens --- */
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-bg-hover: rgba(255, 255, 255, 0.08);
+  --glass-bg-strong: rgba(255, 255, 255, 0.12);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-border-strong: rgba(255, 255, 255, 0.18);
+  --glass-blur: 16px;
+  --glass-blur-strong: 24px;
+  --glass-blur-subtle: 8px;
+
+  /* --- Gradients --- */
+  --gradient-page: linear-gradient(145deg, #0b0d14 0%, #151821 40%, #1a1530 100%);
+  --gradient-accent: linear-gradient(135deg, var(--color-accent), #a93ef0);
+  --gradient-glow: radial-gradient(ellipse at 50% 0%, rgba(99, 130, 255, 0.12) 0%, transparent 60%);
+
+  /* --- Surfaces (Dark-first for glass) --- */
+  --surface-page: var(--color-neutral-950);
+  --surface-card: var(--glass-bg);
+  --surface-raised: var(--glass-bg-strong);
+  --surface-overlay: rgba(0, 0, 0, 0.5);
+  --surface-sunken: rgba(0, 0, 0, 0.2);
+  --surface-inverse: var(--color-white);
+  --surface-header: rgba(11, 13, 20, 0.8);
+
+  /* --- Text (Dark-first) --- */
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.55);
+  --text-tertiary: rgba(255, 255, 255, 0.35);
+  --text-disabled: rgba(255, 255, 255, 0.18);
+  --text-inverse: var(--color-neutral-950);
+  --text-link: var(--color-accent);
+  --text-link-hover: var(--color-accent-light);
+
+  /* --- Typography --- */
+  --font-display: "Inter", -apple-system, sans-serif;
+  --font-heading: "Inter", -apple-system, sans-serif;
+  --font-body: "Inter", -apple-system, sans-serif;
+  --font-data: "JetBrains Mono", "Fira Code", monospace;
+  --font-ui: "Inter", -apple-system, sans-serif;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+
+  --leading-tight: 1.2;
+  --leading-snug: 1.35;
+  --leading-normal: 1.55;
+  --leading-relaxed: 1.7;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: -0.01em;
+  --tracking-wide: 0.01em;
+  --tracking-wider: 0.04em;
+  --tracking-caps: 0.08em;
+
+  --weight-light: 300;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* --- Spacing --- */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: 0.125rem;
+  --space-1: 0.25rem;
+  --space-1-5: 0.375rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+  --space-32: 8rem;
+
+  /* --- Layout --- */
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+  --container-2xl: 1440px;
+  --content-width: 700px;
+
+  /* --- Borders --- */
+  --border-width-thin: 1px;
+  --border-width-medium: 1px;
+  --border-width-thick: 2px;
+  --border-color: var(--glass-border);
+  --border-color-strong: var(--glass-border-strong);
+  --border-color-focus: var(--color-accent);
+
+  --radius-none: 0;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* --- Shadows --- */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.35);
+  --shadow-inner: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-glow: 0 0 30px var(--color-accent-subtle);
+
+  /* --- Transitions --- */
+  --duration-instant: 0ms;
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 450ms;
+  --duration-slower: 700ms;
+  --ease-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* --- Z-Index --- */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-header: 250;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-popover: 500;
+  --z-toast: 600;
+  --z-tooltip: 700;
+
+  /* --- Opacity --- */
+  --opacity-disabled: 0.35;
+  --opacity-placeholder: 0.35;
+  --opacity-hover: 0.06;
+  --opacity-overlay: 0.5;
+
+  /* --- Focus --- */
+  --focus-ring: 0 0 0 2px rgba(0, 0, 0, 0.3), 0 0 0 4px var(--color-accent);
+
+  /* --- Component Tokens --- */
+  --btn-padding-x: var(--space-5);
+  --btn-padding-y: 0.625rem;
+  --btn-radius: var(--radius-md);
+  --btn-font: var(--font-ui);
+  --btn-size: var(--text-sm);
+  --btn-weight: var(--weight-medium);
+  --btn-text-transform: none;
+  --btn-letter-spacing: var(--tracking-wide);
+  --btn-border-width: var(--border-width-thin);
+  --btn-shadow: none;
+  --btn-shadow-hover: var(--shadow-glow);
+
+  --input-padding-x: var(--space-4);
+  --input-padding-y: 0.625rem;
+  --input-radius: var(--radius-md);
+  --input-border: var(--border-width-thin) solid var(--glass-border);
+  --input-bg: var(--glass-bg);
+  --input-font: var(--font-body);
+
+  --card-padding: var(--space-6);
+  --card-radius: var(--radius-lg);
+  --card-shadow: var(--shadow-sm);
+  --card-border: var(--border-width-thin) solid var(--glass-border);
+  --card-bg: var(--glass-bg);
+
+  --badge-padding-x: var(--space-3);
+  --badge-padding-y: var(--space-1);
+  --badge-radius: var(--radius-full);
+  --badge-font-size: var(--text-xs);
+  --badge-weight: var(--weight-medium);
+  --badge-text-transform: none;
+  --badge-letter-spacing: var(--tracking-wide);
+
+  --header-height: 56px;
+  --header-bg: var(--surface-header);
+  --header-border: var(--border-width-thin) solid var(--glass-border);
+  --header-shadow: none;
+
+  --sidebar-width: 260px;
+}
+
+/* --- Light Mode (glass goes light) --- */
+[data-theme="light"] {
+  --glass-bg: rgba(0, 0, 0, 0.03);
+  --glass-bg-hover: rgba(0, 0, 0, 0.05);
+  --glass-bg-strong: rgba(0, 0, 0, 0.07);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-strong: rgba(0, 0, 0, 0.14);
+
+  --surface-page: var(--color-white);
+  --surface-card: var(--glass-bg);
+  --surface-raised: var(--glass-bg-strong);
+  --surface-sunken: rgba(0, 0, 0, 0.03);
+  --surface-inverse: var(--color-neutral-950);
+  --surface-header: rgba(255, 255, 255, 0.75);
+
+  --text-primary: var(--color-neutral-950);
+  --text-secondary: var(--color-neutral-500);
+  --text-tertiary: var(--color-neutral-400);
+  --text-disabled: var(--color-neutral-300);
+  --text-inverse: var(--color-white);
+
+  --border-color: var(--glass-border);
+  --border-color-strong: var(--glass-border-strong);
+
+  --input-bg: var(--glass-bg);
+
+  --header-bg: var(--surface-header);
+}
+
+/* --- Hebrew / RTL Font Override --- */
+[lang="he"],
+[dir="rtl"] {
+  --font-display: "Noto Sans Hebrew", sans-serif;
+  --font-heading: "Noto Sans Hebrew", sans-serif;
+  --font-body: "Noto Sans Hebrew", sans-serif;
+  --font-data: "Heshbon", "Courier New", "Courier", monospace;
+  --font-ui: "Noto Sans Hebrew", sans-serif;
+}
+
+/* --- Hebrew Font Variants (use data-font-he attribute) --- */
+[lang="he"][data-font-he="yarden"],
+[dir="rtl"][data-font-he="yarden"] {
+  --font-display: "Yarden", "Noto Sans Hebrew", sans-serif;
+  --font-heading: "Yarden", "Noto Sans Hebrew", sans-serif;
+  --font-body: "Yarden", "Noto Sans Hebrew", sans-serif;
+  --font-ui: "Yarden", "Noto Sans Hebrew", sans-serif;
+}
+
+[lang="he"][data-font-he="migdal"],
+[dir="rtl"][data-font-he="migdal"] {
+  --font-display: "Migdal Haemeq", "Noto Sans Hebrew", sans-serif;
+  --font-heading: "Migdal Haemeq", "Noto Sans Hebrew", sans-serif;
+}
+
+[lang="he"][data-font-he="heshbon"],
+[dir="rtl"][data-font-he="heshbon"] {
+  --font-display: "Heshbon", "Noto Sans Hebrew", sans-serif;
+  --font-heading: "Heshbon", "Noto Sans Hebrew", sans-serif;
+  --font-body: "Heshbon", "Noto Sans Hebrew", sans-serif;
+  --font-ui: "Heshbon", "Noto Sans Hebrew", sans-serif;
+}
+
+[lang="he"][data-font-he="asakim"],
+[dir="rtl"][data-font-he="asakim"] {
+  --font-display: "Asakim", "Noto Sans Hebrew", sans-serif;
+  --font-heading: "Asakim", "Noto Sans Hebrew", sans-serif;
+}

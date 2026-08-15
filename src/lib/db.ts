@@ -4,15 +4,65 @@
 import Dexie, { type EntityTable } from 'dexie';
 import type { Category, Item } from './types';
 
+export interface OutboxEntry {
+  seq?: number;
+  table: 'items' | 'categories';
+  rowId: string;
+  deleted: boolean;
+  at: number;
+}
+
 export const db = new Dexie('seder') as Dexie & {
   items: EntityTable<Item, 'id'>;
   categories: EntityTable<Category, 'id'>;
+  outbox: EntityTable<OutboxEntry, 'seq'>;
+  meta: EntityTable<{ key: string; value: unknown }, 'key'>;
 };
 
 db.version(1).stores({
   items: 'id, categoryId, parentId, today, pinned, done, archivedAt, updatedAt',
   categories: 'id, order, archived',
 });
+// v2: an outbox of local changes waiting to reach the server, and a
+// tombstone list so deletes replicate. Both survive offline sessions.
+db.version(2).stores({
+  items: 'id, categoryId, parentId, today, pinned, done, archivedAt, updatedAt',
+  categories: 'id, order, archived',
+  outbox: '++seq, table, rowId',
+  meta: 'key',
+});
+
+export const outbox = db.outbox;
+export const meta = db.meta;
+
+/** Record that a row changed locally. */
+export async function markDirty(table: 'items' | 'categories', rowId: string, deleted = false): Promise<void> {
+  await outbox.add({ table, rowId, deleted, at: Date.now() });
+}
+
+// Every local write - from any store action - lands in the outbox via Dexie
+// hooks. Remote applies (sync.ts) set this flag to stay out of the outbox.
+export let applyingRemote = false;
+export function withRemote<T>(fn: () => Promise<T>): Promise<T> {
+  applyingRemote = true;
+  return fn().finally(() => {
+    applyingRemote = false;
+  });
+}
+function wire(table: 'items' | 'categories') {
+  const t = table === 'items' ? db.items : db.categories;
+  t.hook('creating', (key) => {
+    if (!applyingRemote) void outbox.add({ table, rowId: String(key), deleted: false, at: Date.now() });
+  });
+  t.hook('updating', (_mods, key) => {
+    if (!applyingRemote) void outbox.add({ table, rowId: String(key), deleted: false, at: Date.now() });
+  });
+  t.hook('deleting', (key) => {
+    if (!applyingRemote) void outbox.add({ table, rowId: String(key), deleted: true, at: Date.now() });
+  });
+}
+wire('items');
+wire('categories');
 
 // --- Sync adapter seam (phase 2: Supabase implementation) ---
 export interface SyncAdapter {

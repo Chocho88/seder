@@ -4,3 +4,4 @@ references/things-presskit.zip
 references/presskit
 references/*.html
 shots/
+.env.local

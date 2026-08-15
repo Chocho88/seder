@@ -2,7 +2,7 @@
 // Hidden on desktop via CSS. Quick-add opens the omni capture; mic opens it
 // with dictation already running.
 
-import icons from '../../../design-system/icons.svg';
+import icons from '../../vendor/design-system/icons.svg';
 import { useSeder } from '../lib/store';
 import { t } from '../lib/i18n';
 import './mobilebar.css';

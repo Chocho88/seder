@@ -13,7 +13,7 @@
 // - Properties live at the bottom edge, out of the reading path.
 
 import { useEffect, useState } from 'react';
-import icons from '../../../design-system/icons.svg';
+import icons from '../../vendor/design-system/icons.svg';
 import { useSeder, childrenOf } from '../lib/store';
 import { analyzeMove, itemState } from '../lib/nextMove';
 import { dirProps } from '../lib/rtl';

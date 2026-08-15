@@ -1,0 +1,305 @@
+/* ============================================
+   KLOD Design System — Punchy Preset
+   Neu-brutalism. Chunky. Bold. 90s-00s hip hop.
+   Same structure as Classic, amplified to 11.
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&family=Montserrat:wght@400;500;600;700;800;900&family=Noto+Sans+Hebrew:wght@400;500;600;700;800;900&display=swap');
+
+:root {
+  /* --- Identity --- */
+  --preset: "punchy";
+
+  /* --- App Accent (override per-app) --- */
+  --color-accent: #ff3d69;
+  --color-accent-light: #ffb8c6;
+  --color-accent-dark: #d42f54;
+  --color-accent-subtle: rgba(255, 61, 105, 0.1);
+  --color-accent-muted: rgba(255, 61, 105, 0.2);
+
+  /* --- Black & White Core --- */
+  --color-black: #000000;
+  --color-white: #ffffff;
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-200: #e5e5e5;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-500: #737373;
+  --color-neutral-600: #525252;
+  --color-neutral-700: #404040;
+  --color-neutral-800: #262626;
+  --color-neutral-900: #171717;
+  --color-neutral-950: #0a0a0a;
+
+  /* --- Semantic --- */
+  --color-success: #22c55e;
+  --color-success-light: #f0fdf4;
+  --color-warning: #f59e0b;
+  --color-warning-light: #fefce8;
+  --color-error: #ef4444;
+  --color-error-light: #fef2f2;
+  --color-info: #3b82f6;
+  --color-info-light: #eff6ff;
+
+  /* --- Surfaces (Light) --- */
+  --surface-page: var(--color-white);
+  --surface-card: var(--color-white);
+  --surface-raised: var(--color-neutral-50);
+  --surface-overlay: rgba(0, 0, 0, 0.6);
+  --surface-sunken: var(--color-neutral-100);
+  --surface-inverse: var(--color-black);
+  --surface-header: var(--color-white);
+
+  /* --- Text (Light) --- */
+  --text-primary: var(--color-black);
+  --text-secondary: var(--color-neutral-700);
+  --text-tertiary: var(--color-neutral-500);
+  --text-disabled: var(--color-neutral-300);
+  --text-inverse: var(--color-white);
+  --text-link: var(--color-accent);
+  --text-link-hover: var(--color-accent-dark);
+
+  /* --- Typography — English ---
+     Per-app: pick ONE display font variant:
+       data-font="montserrat" => Montserrat Black titles (default)
+       data-font="poppins"    => Poppins Black titles
+     Body is always Poppins.
+  --- */
+  --font-display: "Montserrat", sans-serif;
+  --font-heading: "Montserrat", sans-serif;
+  --font-body: "Poppins", sans-serif;
+  --font-data: "Courier New", "Courier", monospace;
+  --font-ui: "Poppins", sans-serif;
+
+  /* Punchy uses heavier weights across the board */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.3rem;
+  --text-2xl: 1.625rem;
+  --text-3xl: 2.1rem;
+  --text-4xl: 2.75rem;
+  --text-5xl: 3.5rem;
+  --text-6xl: 5rem;
+
+  --leading-tight: 1.05;
+  --leading-snug: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  --tracking-tight: -0.03em;
+  --tracking-normal: -0.01em;
+  --tracking-wide: 0.01em;
+  --tracking-wider: 0.06em;
+  --tracking-caps: 0.14em;
+
+  --weight-light: 400;
+  --weight-regular: 500;
+  --weight-medium: 600;
+  --weight-semibold: 700;
+  --weight-bold: 900;
+
+  /* --- Spacing --- */
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0-5: 0.125rem;
+  --space-1: 0.25rem;
+  --space-1-5: 0.375rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+  --space-32: 8rem;
+
+  /* --- Layout --- */
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+  --container-2xl: 1536px;
+  --content-width: 720px;
+
+  /* --- Borders (NEU-BRUTALISM: thick & bold) --- */
+  --border-width-thin: 2px;
+  --border-width-medium: 3px;
+  --border-width-thick: 4px;
+  --border-color: var(--color-black);
+  --border-color-strong: var(--color-black);
+  --border-color-focus: var(--color-accent);
+
+  --radius-none: 0;
+  --radius-sm: 0;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
+
+  /* --- Shadows (NEU-BRUTALISM: hard offset, no blur) --- */
+  --shadow-xs: 2px 2px 0 var(--color-black);
+  --shadow-sm: 3px 3px 0 var(--color-black);
+  --shadow-md: 5px 5px 0 var(--color-black);
+  --shadow-lg: 7px 7px 0 var(--color-black);
+  --shadow-xl: 10px 10px 0 var(--color-black);
+  --shadow-inner: inset 2px 2px 0 rgba(0, 0, 0, 0.1);
+  --shadow-accent: 5px 5px 0 var(--color-accent);
+
+  /* --- Transitions --- */
+  --duration-instant: 0ms;
+  --duration-fast: 80ms;
+  --duration-normal: 150ms;
+  --duration-slow: 250ms;
+  --duration-slower: 400ms;
+  --ease-default: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-out: cubic-bezier(0, 0.55, 0.45, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-bounce: cubic-bezier(0.34, 2, 0.64, 1);
+
+  /* --- Z-Index --- */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-header: 250;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-popover: 500;
+  --z-toast: 600;
+  --z-tooltip: 700;
+
+  /* --- Opacity --- */
+  --opacity-disabled: 0.4;
+  --opacity-placeholder: 0.5;
+  --opacity-hover: 0.1;
+  --opacity-overlay: 0.6;
+
+  /* --- Focus --- */
+  --focus-ring: 4px 4px 0 var(--color-accent), 0 0 0 3px var(--color-black);
+
+  /* --- Component Tokens (NEU-BRUTALISM) --- */
+  --btn-padding-x: var(--space-6);
+  --btn-padding-y: var(--space-3);
+  --btn-radius: var(--radius-none);
+  --btn-font: var(--font-ui);
+  --btn-size: var(--text-sm);
+  --btn-weight: var(--weight-bold);
+  --btn-text-transform: uppercase;
+  --btn-letter-spacing: var(--tracking-wider);
+  --btn-border-width: var(--border-width-medium);
+  --btn-shadow: var(--shadow-sm);
+  --btn-shadow-hover: var(--shadow-md);
+
+  --input-padding-x: var(--space-4);
+  --input-padding-y: var(--space-3);
+  --input-radius: var(--radius-none);
+  --input-border: var(--border-width-medium) solid var(--color-black);
+  --input-bg: var(--color-white);
+  --input-font: var(--font-body);
+
+  --card-padding: var(--space-6);
+  --card-radius: var(--radius-none);
+  --card-shadow: var(--shadow-md);
+  --card-border: var(--border-width-medium) solid var(--color-black);
+  --card-bg: var(--surface-card);
+
+  --badge-padding-x: var(--space-3);
+  --badge-padding-y: var(--space-1);
+  --badge-radius: var(--radius-none);
+  --badge-font-size: var(--text-xs);
+  --badge-weight: var(--weight-bold);
+  --badge-text-transform: uppercase;
+  --badge-letter-spacing: var(--tracking-caps);
+
+  --header-height: 58px;
+  --header-bg: var(--surface-header);
+  --header-border: var(--border-width-medium) solid var(--color-black);
+  --header-shadow: 0 3px 0 var(--color-black);
+
+  --sidebar-width: 260px;
+}
+
+/* --- Dark Mode --- */
+[data-theme="dark"] {
+  --surface-page: var(--color-black);
+  --surface-card: var(--color-neutral-900);
+  --surface-raised: var(--color-neutral-800);
+  --surface-overlay: rgba(0, 0, 0, 0.75);
+  --surface-sunken: var(--color-neutral-950);
+  --surface-inverse: var(--color-white);
+  --surface-header: var(--color-black);
+
+  --text-primary: var(--color-white);
+  --text-secondary: var(--color-neutral-300);
+  --text-tertiary: var(--color-neutral-500);
+  --text-disabled: var(--color-neutral-700);
+  --text-inverse: var(--color-black);
+
+  --border-color: var(--color-white);
+  --border-color-strong: var(--color-white);
+
+  --input-bg: var(--color-neutral-900);
+
+  --shadow-xs: 2px 2px 0 var(--color-white);
+  --shadow-sm: 3px 3px 0 var(--color-white);
+  --shadow-md: 5px 5px 0 var(--color-white);
+  --shadow-lg: 7px 7px 0 var(--color-white);
+  --shadow-xl: 10px 10px 0 var(--color-white);
+
+  --header-bg: var(--color-black);
+  --header-border: var(--border-width-medium) solid var(--color-white);
+  --header-shadow: 0 3px 0 var(--color-white);
+}
+
+/* --- Font Variant: Poppins Black --- */
+[data-font="poppins"] {
+  --font-display: "Poppins", sans-serif;
+  --font-heading: "Poppins", sans-serif;
+}
+
+/* --- Hebrew / RTL Font Override --- */
+[lang="he"],
+[dir="rtl"] {
+  --font-display: "Noto Sans Hebrew", sans-serif;
+  --font-heading: "Noto Sans Hebrew", sans-serif;
+  --font-body: "Noto Sans Hebrew", sans-serif;
+  --font-data: "Heshbon", "Courier New", "Courier", monospace;
+  --font-ui: "Noto Sans Hebrew", sans-serif;
+}
+
+/* --- Hebrew Font Variants (use data-font-he attribute) --- */
+[lang="he"][data-font-he="yarden"],
+[dir="rtl"][data-font-he="yarden"] {
+  --font-display: "Yarden", "Noto Sans Hebrew", sans-serif;
+  --font-heading: "Yarden", "Noto Sans Hebrew", sans-serif;
+  --font-body: "Yarden", "Noto Sans Hebrew", sans-serif;
+  --font-ui: "Yarden", "Noto Sans Hebrew", sans-serif;
+}
+
+[lang="he"][data-font-he="migdal"],
+[dir="rtl"][data-font-he="migdal"] {
+  --font-display: "Migdal Haemeq", "Noto Sans Hebrew", sans-serif;
+  --font-heading: "Migdal Haemeq", "Noto Sans Hebrew", sans-serif;
+}
+
+[lang="he"][data-font-he="heshbon"],
+[dir="rtl"][data-font-he="heshbon"] {
+  --font-display: "Heshbon", "Noto Sans Hebrew", sans-serif;
+  --font-heading: "Heshbon", "Noto Sans Hebrew", sans-serif;
+  --font-body: "Heshbon", "Noto Sans Hebrew", sans-serif;
+  --font-ui: "Heshbon", "Noto Sans Hebrew", sans-serif;
+}
+
+[lang="he"][data-font-he="asakim"],
+[dir="rtl"][data-font-he="asakim"] {
+  --font-display: "Asakim", "Noto Sans Hebrew", sans-serif;
+  --font-heading: "Asakim", "Noto Sans Hebrew", sans-serif;
+}

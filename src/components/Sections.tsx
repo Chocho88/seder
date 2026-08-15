@@ -3,7 +3,7 @@
 // handle for reordering. Desktop and phone render the same list.
 
 import { useState } from 'react';
-import icons from '../../../design-system/icons.svg';
+import icons from '../../vendor/design-system/icons.svg';
 import { useSeder, morningCandidates, endOfToday } from '../lib/store';
 import { t, useLang } from '../lib/i18n';
 import { dirProps } from '../lib/rtl';

@@ -5,6 +5,7 @@ import { create } from 'zustand';
 import { db, uid } from './db';
 import { seedIfEmpty } from './seed';
 import { t } from './i18n';
+import { onRemote } from './sync';
 import { DEFAULT_SECTIONS, type CardStyle, type Category, type DetailMode, type Item, type SectionId, type SectionPref, type ViewId } from './types';
 
 const SECTIONS_KEY = 'seder-sections';
@@ -156,7 +157,9 @@ export const useSeder = create<SederState>((set, get) => {
   dragSectionId: null,
 
   async init() {
-    await seedIfEmpty(wantsFreshSeed());
+    // Demo seed only in dev (or on explicit ?seed=fresh). In production a
+    // fresh device starts empty and fills from sync after sign-in.
+    if (import.meta.env.DEV || wantsFreshSeed()) await seedIfEmpty(wantsFreshSeed());
 
     // The Pool: the basic intake list. Fixed id makes creation idempotent
     // (init can run twice under StrictMode); stray duplicates get removed.
@@ -194,6 +197,11 @@ export const useSeder = create<SederState>((set, get) => {
       open = first?.id ?? null;
     }
     set({ ...data, ready: true, openItemId: open });
+
+    // remote changes (other device) land in IndexedDB; reload the live state
+    onRemote(() => {
+      void loadAll().then((fresh) => set({ items: fresh.items, categories: fresh.categories }));
+    });
   },
 
   async addItem(partial) {

@@ -5,7 +5,7 @@
 // the header for sweep (when done items exist) and delete (items -> Pool).
 
 import { useState } from 'react';
-import icons from '../../../design-system/icons.svg';
+import icons from '../../vendor/design-system/icons.svg';
 import { useSeder, topLevelOf } from '../lib/store';
 import { dirProps } from '../lib/rtl';
 import { t } from '../lib/i18n';
