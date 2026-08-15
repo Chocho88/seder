@@ -61,7 +61,15 @@ export default function CategoryCard({ category }: { category: Category }) {
       data-cat={category.colorKey}
       data-system={category.system ? '' : undefined}
       data-drop={`cat:${category.id}`}
-      style={category.customColor ? ({ '--cat-color': category.customColor } as React.CSSProperties) : undefined}
+      style={
+        category.customColor
+          ? ({
+              '--cat-color': category.customColor,
+              // the wash follows the hue: same 15% weight the presets use
+              '--cat-tint': `color-mix(in srgb, ${category.customColor} 15%, transparent)`,
+            } as React.CSSProperties)
+          : undefined
+      }
       onDragOver={(e) => {
         if (dragItemId || (dragCategoryId && dragCategoryId !== category.id)) {
           e.preventDefault();

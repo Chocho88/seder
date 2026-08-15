@@ -88,7 +88,15 @@ export default function ItemRow({
           .filter(Boolean)
           .join(' ')}
         data-cat={catColor}
-        style={depth ? { paddingInlineStart: `calc(var(--space-4) + ${depth} * var(--space-5))` } : undefined}
+        style={{
+          ...(depth ? { paddingInlineStart: `calc(var(--space-4) + ${depth} * var(--space-5))` } : {}),
+          ...(cat?.customColor
+            ? ({
+                '--cat-color': cat.customColor,
+                '--cat-tint': `color-mix(in srgb, ${cat.customColor} 15%, transparent)`,
+              } as React.CSSProperties)
+            : {}),
+        }}
         draggable
         onDragStart={(e) => {
           disarmPreview();
