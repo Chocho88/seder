@@ -459,3 +459,50 @@
 .item-reference .item-check {
   border-style: dotted;
 }
+
+/* --- Touch: let the app own the long-press. Without these, iOS Safari
+   starts a scroll or the text-selection loupe ~300ms in and cancels our
+   pointer stream, so nothing drags on the phone. --- */
+@media (hover: none) and (pointer: coarse) {
+  .item-row {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  /* vertical scroll still allowed until the long-press lifts the row */
+  .item-row {
+    touch-action: pan-y;
+  }
+  :root:has(.touchdrag-ghost) .item-row {
+    touch-action: none;
+  }
+}
+
+/* --- "More" mark: touch's route to the row menu. Hidden where hover
+   exists (hover actions + right-click cover it). --- */
+.item-more {
+  display: none;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  margin-inline-start: auto;
+  flex-shrink: 0;
+}
+.item-more .icon {
+  width: 14px;
+  height: 14px;
+}
+@media (hover: none) and (pointer: coarse) {
+  .item-more {
+    display: grid;
+  }
+  /* the row menu should be thumb-friendly */
+  .rowmenu-entry {
+    padding: var(--space-2-5, 0.625rem) var(--space-3);
+    font-size: var(--text-base);
+  }
+}

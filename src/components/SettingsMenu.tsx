@@ -25,7 +25,7 @@ function SectionsEditor() {
         </button>
       </div>
       <p className="settings-hint">{t('sections_hint')}</p>
-      {sections.map((s) => (
+      {sections.map((s, i) => (
         <div
           key={s.id}
           className={`settings-section-row${overId === s.id ? ' over' : ''}${dragId === s.id ? ' dragging' : ''}`}
@@ -55,6 +55,34 @@ function SectionsEditor() {
             <use href={`${icons}#icon-menu`} />
           </svg>
           <span className="settings-section-name">{t(`section_${s.id}`)}</span>
+          {/* touch devices: arrows instead of drag */}
+          <span className="settings-arrows">
+            <button
+              className="settings-arrow"
+              aria-label="Up"
+              disabled={i === 0}
+              onClick={() => moveSection(s.id, sections[i - 1].id)}
+            >
+              <svg className="icon settings-arrow-up">
+                <use href={`${icons}#icon-chevron-down`} />
+              </svg>
+            </button>
+            <button
+              className="settings-arrow"
+              aria-label="Down"
+              disabled={i === sections.length - 1}
+              onClick={() => {
+                // move below the next one = drop onto the one after next (or end)
+                const target = sections[i + 2]?.id;
+                if (target) moveSection(s.id, target);
+                else moveSection(sections[i + 1].id, s.id);
+              }}
+            >
+              <svg className="icon">
+                <use href={`${icons}#icon-chevron-down`} />
+              </svg>
+            </button>
+          </span>
           <button
             className={`settings-switch settings-switch-sm${s.on ? ' on' : ''}`}
             role="switch"

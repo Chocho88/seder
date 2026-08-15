@@ -32,20 +32,38 @@ export default function TouchDragLayer() {
         }
       }
     };
+    let finished = false; // pointerup and touchend both fire on iOS - drop once
     const up = () => {
+      if (finished) return;
+      finished = true;
       const key = hoverEl.current?.getAttribute('data-drop');
       clearHover();
       if (key) void dropOn(key);
       else setDragItem(null);
     };
 
+    // iOS Safari: pointer events alone lose to the native scroll gesture.
+    // A non-passive touchmove that preventDefaults keeps the finger ours,
+    // and we mirror the touch position into the same move handler.
+    const touchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      const t = e.touches[0];
+      if (t) move({ clientX: t.clientX, clientY: t.clientY, preventDefault() {} } as unknown as PointerEvent);
+    };
+    const touchEnd = () => up();
     window.addEventListener('pointermove', move, { passive: false });
     window.addEventListener('pointerup', up);
     window.addEventListener('pointercancel', up);
+    window.addEventListener('touchmove', touchMove, { passive: false });
+    window.addEventListener('touchend', touchEnd);
+    window.addEventListener('touchcancel', touchEnd);
     return () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
+      window.removeEventListener('touchmove', touchMove);
+      window.removeEventListener('touchend', touchEnd);
+      window.removeEventListener('touchcancel', touchEnd);
       clearHover();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

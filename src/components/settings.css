@@ -253,3 +253,37 @@ html[data-fontsize='l'] {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* touch: arrows replace drag for section order */
+.settings-arrows {
+  display: none;
+  gap: 2px;
+}
+.settings-arrow {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--border-color) 30%, transparent);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+}
+.settings-arrow:disabled {
+  opacity: 0.3;
+}
+.settings-arrow .icon {
+  width: 12px;
+  height: 12px;
+}
+@media (hover: none) and (pointer: coarse) {
+  .settings-arrows {
+    display: inline-flex;
+  }
+  .settings-grip {
+    display: none;
+  }
+}
+.settings-arrow-up {
+  transform: rotate(180deg);
+}

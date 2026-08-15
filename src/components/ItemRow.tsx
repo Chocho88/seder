@@ -93,11 +93,16 @@ export default function ItemRow({
         onDragStart={(e) => {
           disarmPreview();
           e.stopPropagation();
+          // native drag won the race: cancel the long-press timer
+          if (touchTimer.current !== null) window.clearTimeout(touchTimer.current);
+          touchTimer.current = null;
           setDragItem(item.id);
         }}
         onDragEnd={() => setDragItem(null)}
         onClick={() => {
           disarmPreview();
+          // a release that ended a lift/drop is not a click
+          if (useSeder.getState().dragItemId || useSeder.getState().touchDrag) return;
           openItem(item.id);
         }}
         onMouseEnter={armPreview}
@@ -108,18 +113,41 @@ export default function ItemRow({
           disarmPreview();
           setMenu({ x: e.clientX, y: e.clientY });
         }}
-        // touch: long-press picks the row up (the TouchDragLayer takes over)
+        // Long-press picks the row up (any pointer type - the TouchDragLayer
+        // then follows the pointer). Mouse users still have native HTML5 drag;
+        // for fingers this is the ONLY path, so it must never lose to iOS's
+        // scroll/selection gestures (see touch CSS in itemrow.css).
         onPointerDown={(e) => {
-          if (e.pointerType !== 'touch') return;
+          // touch only: mouse rows use native HTML5 drag (starts on move and
+          // would race this timer); pens behave like fingers
+          if (e.pointerType === 'mouse') return;
           touchStart.current = { x: e.clientX, y: e.clientY };
+          const el = e.currentTarget as HTMLElement;
+          const isTouch = true;
+          // block iOS from claiming the gesture once the row lifts
+          const block = (ev: TouchEvent) => {
+            if (useSeder.getState().dragItemId === item.id) ev.preventDefault();
+          };
+          if (isTouch) el.addEventListener('touchmove', block, { passive: false });
+          const cleanup = () => {
+            el.removeEventListener('touchmove', block);
+            el.removeEventListener('touchend', cleanup);
+            el.removeEventListener('touchcancel', cleanup);
+          };
+          if (isTouch) {
+            el.addEventListener('touchend', cleanup);
+            el.addEventListener('touchcancel', cleanup);
+          }
           touchTimer.current = window.setTimeout(() => {
+            touchTimer.current = null;
+            if (!isTouch && !touchStart.current) return;
             setDragItem(item.id);
             setTouchDrag({ x: touchStart.current!.x, y: touchStart.current!.y, title: item.title });
             (navigator as any).vibrate?.(12);
-          }, 320);
+          }, isTouch ? 320 : 450);
         }}
         onPointerMove={(e) => {
-          if (e.pointerType !== 'touch' || touchTimer.current === null || !touchStart.current) return;
+          if (touchTimer.current === null || !touchStart.current) return;
           if (Math.hypot(e.clientX - touchStart.current.x, e.clientY - touchStart.current.y) > 10) {
             window.clearTimeout(touchTimer.current);
             touchTimer.current = null;
@@ -242,6 +270,22 @@ export default function ItemRow({
             </svg>
           </button>
         </span>
+
+        {/* touch: the row menu lives behind a "more" mark (no hover, no right-click) */}
+        <button
+          className="item-more"
+          aria-label="More"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (useSeder.getState().dragItemId || useSeder.getState().touchDrag) return;
+            const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            setMenu({ x: r.left, y: r.bottom + 4 });
+          }}
+        >
+          <svg className="icon" aria-hidden="true">
+            <use href={`${icons}#icon-menu`} />
+          </svg>
+        </button>
       </div>
 
       {menu && <RowMenu item={item} x={menu.x} y={menu.y} close={() => setMenu(null)} />}
@@ -295,9 +339,11 @@ function RowMenu({ item, x, y, close }: { item: Item; x: number; y: number; clos
       if (e.key === 'Escape') close();
     };
     window.addEventListener('mousedown', onAway);
+    window.addEventListener('touchstart', onAway, { passive: true });
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('mousedown', onAway);
+      window.removeEventListener('touchstart', onAway);
       window.removeEventListener('keydown', onKey);
     };
   }, [close]);
@@ -324,6 +370,7 @@ function RowMenu({ item, x, y, close }: { item: Item; x: number; y: number; clos
       dir={document.documentElement.dir}
       style={{ left, top }}
       onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
     >
       {entry('calendar', t('today_flag'), item.today, () => void setToday(item.id, !item.today))}
       {entry('moon', t('evening'), !!item.evening, () =>

@@ -41,7 +41,9 @@ export async function markDirty(table: 'items' | 'categories', rowId: string, de
 }
 
 // Every local write - from any store action - lands in the outbox via Dexie
-// hooks. Remote applies (sync.ts) set this flag to stay out of the outbox.
+// hooks. The hooks run INSIDE the caller's transaction (which may not include
+// the outbox store), so they only collect keys; the actual outbox writes are
+// flushed in a fresh transaction once the current one settles.
 export let applyingRemote = false;
 export function withRemote<T>(fn: () => Promise<T>): Promise<T> {
   applyingRemote = true;
@@ -49,17 +51,26 @@ export function withRemote<T>(fn: () => Promise<T>): Promise<T> {
     applyingRemote = false;
   });
 }
+const pending: OutboxEntry[] = [];
+let flushScheduled = false;
+function queue(table: 'items' | 'categories', rowId: string, deleted: boolean) {
+  if (applyingRemote) return;
+  pending.push({ table, rowId, deleted, at: Date.now() });
+  if (!flushScheduled) {
+    flushScheduled = true;
+    // next macrotask: the originating transaction has committed by then
+    setTimeout(() => {
+      flushScheduled = false;
+      const batch = pending.splice(0, pending.length);
+      if (batch.length) void outbox.bulkAdd(batch).catch((e) => console.warn('[outbox]', e));
+    }, 0);
+  }
+}
 function wire(table: 'items' | 'categories') {
   const t = table === 'items' ? db.items : db.categories;
-  t.hook('creating', (key) => {
-    if (!applyingRemote) void outbox.add({ table, rowId: String(key), deleted: false, at: Date.now() });
-  });
-  t.hook('updating', (_mods, key) => {
-    if (!applyingRemote) void outbox.add({ table, rowId: String(key), deleted: false, at: Date.now() });
-  });
-  t.hook('deleting', (key) => {
-    if (!applyingRemote) void outbox.add({ table, rowId: String(key), deleted: true, at: Date.now() });
-  });
+  t.hook('creating', (key) => queue(table, String(key), false));
+  t.hook('updating', (_mods, key) => queue(table, String(key), false));
+  t.hook('deleting', (key) => queue(table, String(key), true));
 }
 wire('items');
 wire('categories');

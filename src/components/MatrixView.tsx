@@ -74,6 +74,7 @@ export default function MatrixView() {
             key={key}
             className={`matrix-quadrant mq-${key}${overKey === key ? ' drag-over' : ''}`}
             data-drop={`q:${key}`}
+            data-caption={q.important ? t('important') : t('not_important')}
             onDragOver={(e) => {
               e.preventDefault();
               setOverKey(key);
