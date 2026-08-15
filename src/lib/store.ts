@@ -269,9 +269,24 @@ export const useSeder = create<SederState>((set, get) => {
   },
 
   async deleteItem(id) {
+    // Soft delete: the item (and its sub-items) leave the live board and
+    // rest in the Logbook, marked deleted, restorable. Nothing truly vanishes.
     pushUndo(t('toast_deleted'));
-    await db.items.delete(id);
-    set({ items: get().items.filter((i) => i.id !== id), openItemId: get().openItemId === id ? null : get().openItemId });
+    const all = get().items;
+    const family = [id];
+    const collect = (pid: string) => {
+      for (const c of all.filter((i) => i.parentId === pid)) {
+        family.push(c.id);
+        collect(c.id);
+      }
+    };
+    collect(id);
+    const now = Date.now();
+    await db.items.where('id').anyOf(family).modify({ archivedAt: now, deletedAt: now, updatedAt: now });
+    set({
+      items: all.filter((i) => !family.includes(i.id)),
+      openItemId: get().openItemId === id ? null : get().openItemId,
+    });
   },
 
   async setToday(id, today) {
@@ -605,10 +620,33 @@ export const useSeder = create<SederState>((set, get) => {
   },
 
   async restoreItem(id) {
-    const patch = { archivedAt: null, done: false, doneAt: null, updatedAt: Date.now() };
-    await db.items.update(id, patch);
-    const restored = await db.items.get(id);
-    if (restored) set({ items: [...get().items, restored] });
+    // Restore the item with everything it needs to make sense: its archived
+    // sub-items come along, and if it's a sub-item whose parent is archived,
+    // the parent comes back too (a checklist row without its parent is noise).
+    const all = await db.items.toArray();
+    const byId = new Map(all.map((i) => [i.id, i]));
+    const ids = new Set<string>([id]);
+    // ancestors that are archived
+    let cur = byId.get(id);
+    while (cur?.parentId) {
+      const par = byId.get(cur.parentId);
+      if (!par) break;
+      if (par.archivedAt !== null) ids.add(par.id);
+      cur = par;
+    }
+    // descendants that are archived
+    const collect = (pid: string) => {
+      for (const c of all.filter((i) => i.parentId === pid && i.archivedAt !== null)) {
+        ids.add(c.id);
+        collect(c.id);
+      }
+    };
+    collect(id);
+    const now = Date.now();
+    await db.items.where('id').anyOf([...ids]).modify({ archivedAt: null, deletedAt: null, done: false, doneAt: null, updatedAt: now });
+    const restored = await db.items.where('id').anyOf([...ids]).toArray();
+    const live = new Set(get().items.map((i) => i.id));
+    set({ items: [...get().items, ...restored.filter((i) => !live.has(i.id))] });
   },
   };
 });

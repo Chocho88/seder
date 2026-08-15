@@ -240,3 +240,12 @@
 [dir='ltr'] .logbook-restore .icon {
   transform: scaleX(-1);
 }
+
+/* deleted items: same shelf, honest mark - a muted trash disc, struck title */
+.logbook-row.is-deleted .logbook-check {
+  background: var(--text-tertiary);
+}
+.logbook-row.is-deleted .logbook-row-title {
+  text-decoration: line-through;
+  color: var(--text-tertiary);
+}

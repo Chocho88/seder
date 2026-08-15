@@ -47,7 +47,7 @@ export default function LogbookPanel() {
     });
     const byDay = new Map<string, Item[]>();
     for (const i of filtered) {
-      const key = fmt.format(new Date(i.doneAt ?? i.archivedAt ?? 0));
+      const key = fmt.format(new Date(i.deletedAt ?? i.doneAt ?? i.archivedAt ?? 0));
       byDay.set(key, [...(byDay.get(key) ?? []), i]);
     }
     return [...byDay.entries()];
@@ -90,10 +90,10 @@ export default function LogbookPanel() {
               {rows.map((i) => {
                 const cat = categories.find((c) => c.id === i.categoryId);
                 return (
-                  <div key={i.id} className="logbook-row" data-cat={cat?.colorKey}>
+                  <div key={i.id} className={`logbook-row${i.deletedAt ? ' is-deleted' : ''}`} data-cat={cat?.colorKey}>
                     <span className="logbook-check" aria-hidden>
                       <svg className="icon">
-                        <use href={`${icons}#icon-check`} />
+                        <use href={`${icons}#icon-${i.deletedAt ? 'trash' : 'check'}`} />
                       </svg>
                     </span>
                     <span className="logbook-row-title" {...dirProps(i.title)}>
@@ -104,8 +104,12 @@ export default function LogbookPanel() {
                       data-tooltip={t('restore')}
                       aria-label={t('restore')}
                       onClick={() => {
-                        void restoreItem(i.id);
-                        setEntries((es) => es.filter((e) => e.id !== i.id));
+                        void restoreItem(i.id).then(() =>
+                          db.items
+                            .filter((x) => x.archivedAt !== null)
+                            .toArray()
+                            .then((rows) => setEntries(rows.sort((a, b) => (b.deletedAt ?? b.doneAt ?? b.archivedAt ?? 0) - (a.deletedAt ?? a.doneAt ?? a.archivedAt ?? 0)))),
+                        );
                       }}
                     >
                       <svg className="icon">

@@ -26,7 +26,8 @@ export interface Item {
 
   done: boolean;
   doneAt: number | null; // epoch ms; done items linger until swept
-  archivedAt: number | null; // swept items
+  archivedAt: number | null;
+  deletedAt?: number | null; // soft delete: archived AND marked deleted (Logbook shows it as such)
 
   important: boolean | null; // null = unset (most items never set these)
   urgent: boolean | null;
