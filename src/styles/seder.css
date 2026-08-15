@@ -267,3 +267,8 @@ html[data-colored='on'] .item-note-mark::before {
 [data-theme='dark'] * {
   scrollbar-color: var(--color-neutral-700) transparent;
 }
+
+/* room under the canvas for the floating capture pill (desktop) */
+.seder-main {
+  padding-block-end: calc(80px + env(safe-area-inset-bottom, 0px));
+}

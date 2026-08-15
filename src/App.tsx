@@ -108,7 +108,7 @@ export default function App() {
 
       {openItemId && <DetailPanel key={openItemId} itemId={openItemId} />}
       <CaptureBar />
-      {isMobile && <MobileBar />}
+      <MobileBar />
       <Toast />
       <TouchDragLayer />
       <LogbookPanel />

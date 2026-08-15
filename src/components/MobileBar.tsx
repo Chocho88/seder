@@ -16,6 +16,7 @@ export default function MobileBar() {
           <use href={`${icons}#icon-plus`} />
         </svg>
         <span>{t('add_item')}</span>
+        <kbd className="mobile-bar-kbd">⌘K</kbd>
       </button>
       <button className="mobile-bar-mic pressable" aria-label="Dictate" onClick={() => setCaptureOpen(true, true)}>
         <svg className="icon icon-md">

@@ -1,52 +1,87 @@
-/* Bottom capture bar — mobile only, floats above the scroll, safe-area aware. */
+/* Capture bar - the app's one always-present entry point on every screen.
+   Phone: full-width thumb bar. Desktop: a compact floating pill at the
+   bottom-end corner (Cmd+K remains the keyboard route). Safe-area aware. */
 
 .mobile-bar {
-  display: none;
+  position: fixed;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  bottom: calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
+  inset-inline-end: var(--space-6);
+}
+
+.mobile-bar-add {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 44px;
+  padding-inline: var(--space-4);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-full);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-lg);
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  text-align: start;
+  white-space: nowrap;
+}
+.mobile-bar-add:hover {
+  color: var(--text-primary);
+  border-color: var(--border-color-strong);
+}
+.mobile-bar-add .icon {
+  color: var(--text-secondary);
+}
+/* the keyboard hint, desktop only */
+.mobile-bar-kbd {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--text-tertiary);
+  border: 1px solid color-mix(in srgb, var(--border-color) 35%, transparent);
+  border-radius: 4px;
+  padding: 0 4px;
+  line-height: 1.5;
+  margin-inline-start: var(--space-1);
+}
+
+.mobile-bar-mic {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  color: var(--color-white);
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+}
+.mobile-bar-mic:hover {
+  background: var(--color-accent-hover);
 }
 
 @media (max-width: 768px) {
   .mobile-bar {
-    position: fixed;
     inset-inline: var(--space-4);
     bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
-    z-index: var(--z-sticky);
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
   }
-
   .mobile-bar-add {
     flex: 1;
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
     height: 48px;
-    padding-inline: var(--space-4);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-full);
-    background: var(--surface-card);
-    box-shadow: var(--shadow-lg);
     color: var(--text-tertiary);
-    font-family: var(--font-ui);
-    font-size: var(--text-sm);
-    cursor: pointer;
-    text-align: start;
   }
-  .mobile-bar-add .icon {
-    color: var(--text-secondary);
+  .mobile-bar-kbd {
+    display: none;
   }
-
   .mobile-bar-mic {
     width: 48px;
     height: 48px;
-    flex-shrink: 0;
-    display: grid;
-    place-items: center;
-    border: none;
-    border-radius: var(--radius-full);
-    background: var(--color-accent);
-    color: var(--color-white);
-    box-shadow: var(--shadow-lg);
-    cursor: pointer;
   }
 }
