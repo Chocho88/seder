@@ -1,4 +1,4 @@
-// Seder data model — "one entity, progressive depth".
+// Seder data model - "one entity, progressive depth".
 // Everything is an Item. Depth (sub-items, notes, links, properties) exists
 // only where the user added it.
 
@@ -88,6 +88,21 @@ export const CATEGORY_COLOR_KEYS: CategoryColorKey[] = [
   'mustard',
   'fog',
 ];
+
+// Sharing: one list, exactly two accounts. The row lives on the server's
+// shares table with real columns (RLS needs them); this is the client mirror.
+export type ShareStatus = 'invited' | 'accepted' | 'declined' | 'revoked' | 'left';
+export interface Share {
+  id: string;
+  listId: string;
+  ownerId: string;
+  ownerEmail: string;
+  memberId: string | null; // bound when the invitee accepts
+  memberEmail: string; // the invite address - how the invitee is found
+  status: ShareStatus;
+  createdAt: number;
+  updatedAt: number;
+}
 
 // UI-level types
 export type ViewId = 'today' | 'board' | 'matrix' | 'all';

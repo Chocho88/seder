@@ -1,0 +1,68 @@
+/* Invite banner - one calm line under the header. Nothing blinks. */
+
+.invite-banners {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4) 0;
+}
+
+.invite-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+}
+
+.invite-banner-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.invite-banner-actions {
+  display: inline-flex;
+  gap: var(--space-2);
+  flex: none;
+}
+
+.invite-accept,
+.invite-decline {
+  padding: 4px var(--space-3);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.invite-accept {
+  color: var(--color-on-accent, #fff);
+  background: var(--color-accent);
+  border: none;
+  font-weight: var(--weight-medium);
+}
+.invite-decline {
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-default);
+}
+.invite-accept:disabled,
+.invite-decline:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (max-width: 768px) {
+  .invite-banner {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: start;
+  }
+  .invite-banner-actions {
+    justify-content: flex-end;
+  }
+}

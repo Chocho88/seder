@@ -1,12 +1,35 @@
-// Zustand store — THE contract between all components.
+// Zustand store - THE contract between all components.
 // Components read state + call actions; persistence goes through Dexie here.
+//
+// Sharing (wiki/sharing.md): every item the components see is COMPOSED of
+// its shared row plus MY personal triage overlay (prefs). Components keep
+// reading item.today / item.urgent exactly as before; only the writes are
+// routed - updateItem splits each patch into its shared and personal half.
 
 import { create } from 'zustand';
-import { db, uid } from './db';
+import { db, uid, ownerId, ensurePrefs } from './db';
 import { seedIfEmpty } from './seed';
 import { t } from './i18n';
-import { onRemote } from './sync';
-import { DEFAULT_SECTIONS, type CardStyle, type Category, type DetailMode, type Item, type SectionId, type SectionPref, type ViewId } from './types';
+import { onRemote, onConflict, shareToRow } from './sync';
+import { supabase } from './supabase';
+import {
+  composeItem,
+  prefsFromItem,
+  prefsId,
+  splitPatch,
+  type ItemPrefs,
+} from './shareSplit';
+import {
+  DEFAULT_SECTIONS,
+  type CardStyle,
+  type Category,
+  type DetailMode,
+  type Item,
+  type SectionId,
+  type SectionPref,
+  type Share,
+  type ViewId,
+} from './types';
 
 const SECTIONS_KEY = 'seder-sections';
 function loadSections(): SectionPref[] {
@@ -21,6 +44,24 @@ function loadSections(): SectionPref[] {
     return DEFAULT_SECTIONS;
   }
 }
+
+// A shared list looks like any list, but its color and bento size are the
+// VIEWER's, per device - they live here, not on the shared row.
+const LIST_PREFS_KEY = 'seder-list-prefs';
+type ListOverlay = Partial<Pick<Category, 'colorKey' | 'customColor' | 'w' | 'h'>>;
+function loadListOverlays(): Record<string, ListOverlay> {
+  try {
+    return JSON.parse(localStorage.getItem(LIST_PREFS_KEY) ?? '{}') as Record<string, ListOverlay>;
+  } catch {
+    return {};
+  }
+}
+function saveListOverlay(listId: string, patch: ListOverlay): void {
+  const all = loadListOverlays();
+  all[listId] = { ...all[listId], ...patch };
+  localStorage.setItem(LIST_PREFS_KEY, JSON.stringify(all));
+}
+
 import {
   initialCardStyle,
   initialDetailMode,
@@ -34,8 +75,10 @@ import {
 
 interface SederState {
   ready: boolean;
-  items: Item[]; // non-archived
-  categories: Category[]; // non-archived, ordered
+  items: Item[]; // non-archived, COMPOSED with my prefs overlay
+  categories: Category[]; // non-archived, ordered, viewer overlay applied
+  prefs: ItemPrefs[]; // my triage overlay rows (all items, shared or not)
+  shares: Share[]; // invite/membership cache (mine, either side)
 
   view: ViewId;
   cardStyle: CardStyle;
@@ -51,8 +94,8 @@ interface SederState {
   dragCategoryId: string | null;
   touchDrag: { x: number; y: number; title: string } | null; // long-press drag on touch
 
-  // Undo: full state snapshots (items + categories), restored by Cmd+Z or toast
-  undoStack: { items: Item[]; categories: Category[] }[];
+  // Undo: full state snapshots, restored by Cmd+Z or toast
+  undoStack: { items: Item[]; categories: Category[]; prefs: ItemPrefs[] }[];
   toast: { label: string; at: number } | null;
 
   suggestionsOn: boolean; // settings: morning suggestions visibility
@@ -64,6 +107,7 @@ interface SederState {
 
   // --- lifecycle ---
   init(): Promise<void>;
+  reloadFromDb(): Promise<void>;
 
   // --- item actions ---
   addItem(partial: Partial<Item> & Pick<Item, 'title' | 'categoryId'>): Promise<Item>;
@@ -77,6 +121,15 @@ interface SederState {
   // --- category actions ---
   addCategory(name: string): Promise<Category>;
   updateCategory(id: string, patch: Partial<Category>): Promise<void>;
+
+  // --- sharing (wiki/sharing.md) ---
+  /** True when this list has a live (invited or accepted) share. */
+  shareOf(categoryId: string): Share | undefined;
+  shareList(categoryId: string, email: string): Promise<string | null>; // error key or null
+  acceptShare(shareId: string): Promise<void>;
+  declineShare(shareId: string): Promise<void>;
+  leaveShare(shareId: string): Promise<void>;
+  revokeShare(shareId: string): Promise<void>;
 
   // --- ui actions ---
   setView(view: ViewId): void;
@@ -148,13 +201,22 @@ export async function ensurePool(): Promise<void> {
   });
 }
 
-async function loadAll(): Promise<{ items: Item[]; categories: Category[] }> {
-  const [items, categories] = await Promise.all([
+async function loadAll(): Promise<{ items: Item[]; categories: Category[]; prefs: ItemPrefs[]; shares: Share[] }> {
+  const owner = await ownerId();
+  const [rawItems, rawCats, allPrefs, shares] = await Promise.all([
     db.items.filter((i) => i.archivedAt === null).toArray(),
     db.categories.filter((c) => !c.archived).sortBy('order'),
+    db.prefs.toArray(),
+    db.shares.toArray(),
   ]);
+  const mine = new Map(allPrefs.filter((p) => p.id.startsWith(`${owner}:`)).map((p) => [p.itemId, p]));
+  const items = rawItems.map((i) => composeItem(i, mine.get(i.id)));
   items.sort((a, b) => a.order - b.order);
-  return { items, categories };
+  // shared lists wear the viewer's color/size, not the shared row's
+  const overlays = loadListOverlays();
+  const sharedIds = new Set(shares.filter((s) => s.status === 'accepted').map((s) => s.listId));
+  const categories = rawCats.map((c) => (sharedIds.has(c.id) && overlays[c.id] ? { ...c, ...overlays[c.id] } : c));
+  return { items, categories, prefs: allPrefs, shares };
 }
 
 export const useSeder = create<SederState>((set, get) => {
@@ -163,15 +225,41 @@ export const useSeder = create<SederState>((set, get) => {
     const snap = {
       items: get().items.map((i) => ({ ...i })),
       categories: get().categories.map((c) => ({ ...c })),
+      prefs: get().prefs.map((p) => ({ ...p })),
     };
     const stack = [...get().undoStack, snap].slice(-20);
     set({ undoStack: stack, ...(toastLabel ? { toast: { label: toastLabel, at: Date.now() } } : {}) });
+  };
+
+  /** Write personal-overlay patches for one or more items (creating rows on
+      first triage), then recompose the live items. One transaction. */
+  const writePrefs = async (entries: { itemId: string; patch: Partial<ItemPrefs> }[]) => {
+    const owner = await ownerId();
+    const now = Date.now();
+    const byItem = new Map(get().prefs.filter((p) => p.id.startsWith(`${owner}:`)).map((p) => [p.itemId, p]));
+    const rows: ItemPrefs[] = [];
+    for (const { itemId, patch } of entries) {
+      const item = get().items.find((i) => i.id === itemId);
+      const base = byItem.get(itemId) ?? (item ? prefsFromItem(owner, item) : null);
+      if (!base) continue;
+      rows.push({ ...base, ...patch, id: prefsId(owner, itemId), itemId, updatedAt: now });
+    }
+    if (!rows.length) return;
+    await db.prefs.bulkPut(rows);
+    const updated = new Map(rows.map((r) => [r.itemId, r]));
+    const keep = get().prefs.filter((p) => !rows.some((r) => r.id === p.id));
+    set({
+      prefs: [...keep, ...rows],
+      items: get().items.map((i) => (updated.has(i.id) ? composeItem(i, updated.get(i.id)) : i)),
+    });
   };
 
   return {
   ready: false,
   items: [],
   categories: [],
+  prefs: [],
+  shares: [],
   view: initialView(),
   cardStyle: initialCardStyle(),
   detailMode: initialDetailMode(),
@@ -198,13 +286,15 @@ export const useSeder = create<SederState>((set, get) => {
     // row and different accounts never collide on the shared table. Before
     // sign-in it's a local id; on first sign-in it's renamed to the user's.
     await ensurePool();
+    // Every item gets my personal-overlay row (today/urgent/... live there)
+    await ensurePrefs();
 
     // One-time cleanup: the user never wants an em-dash anywhere.
     await db.items
-      .filter((i) => i.title.includes('—') || i.notes.includes('—'))
+      .filter((i) => i.title.includes('-') || i.notes.includes('-'))
       .modify((i) => {
-        i.title = i.title.split('—').join('-');
-        i.notes = i.notes.split('—').join('-');
+        i.title = i.title.split('-').join('-');
+        i.notes = i.notes.split('-').join('-');
       });
 
     const data = await loadAll();
@@ -218,10 +308,16 @@ export const useSeder = create<SederState>((set, get) => {
     }
     set({ ...data, ready: true, openItemId: open });
 
-    // remote changes (other device) land in IndexedDB; reload the live state
-    onRemote(() => {
-      void loadAll().then((fresh) => set({ items: fresh.items, categories: fresh.categories }));
-    });
+    // remote changes (other device, other account) land in IndexedDB;
+    // reload the live state
+    onRemote(() => void get().reloadFromDb());
+    // a pending title edit lost to a newer remote one - never silently
+    onConflict(() => set({ toast: { label: t('toast_title_conflict'), at: Date.now() } }));
+  },
+
+  async reloadFromDb() {
+    const fresh = await loadAll();
+    set({ items: fresh.items, categories: fresh.categories, prefs: fresh.prefs, shares: fresh.shares });
   },
 
   async addItem(partial) {
@@ -255,20 +351,32 @@ export const useSeder = create<SederState>((set, get) => {
       ...partial,
     };
     if (it.today && !it.todaySince) it.todaySince = now;
+    const owner = await ownerId();
+    const pref = prefsFromItem(owner, it); // capture "!"-style triage too
     await db.items.add(it);
-    set({ items: [...get().items, it] });
+    await db.prefs.put(pref);
+    set({ items: [...get().items, it], prefs: [...get().prefs, pref] });
     return it;
   },
 
   async updateItem(id, patch) {
+    // The sharing split: shared truth onto the item row, my triage into the
+    // prefs overlay. A personal-only patch does not touch the item row (and
+    // so never wakes the other account for a change it cannot see).
+    const { shared, personal } = splitPatch(patch);
     const now = Date.now();
-    const full = { ...patch, updatedAt: now };
-    await db.items.update(id, full);
-    set({
-      items: get()
-        .items.map((i) => (i.id === id ? { ...i, ...full } : i))
-        .filter((i) => i.archivedAt === null),
-    });
+    if (Object.keys(shared).length > 0) {
+      const full = { ...shared, updatedAt: now };
+      await db.items.update(id, full);
+      set({
+        items: get()
+          .items.map((i) => (i.id === id ? { ...i, ...full } : i))
+          .filter((i) => i.archivedAt === null),
+      });
+    }
+    if (Object.keys(personal).length > 0) {
+      await writePrefs([{ itemId: id, patch: personal }]);
+    }
   },
 
   async toggleDone(id) {
@@ -331,8 +439,152 @@ export const useSeder = create<SederState>((set, get) => {
   },
 
   async updateCategory(id, patch) {
+    // A shared list's color and bento size are the viewer's own (per device);
+    // its name and existence are shared truth.
+    const share = get().shareOf(id);
+    if (share && share.status === 'accepted') {
+      const local: ListOverlay = {};
+      const shared: Partial<Category> = {};
+      for (const [k, v] of Object.entries(patch)) {
+        if (k === 'colorKey' || k === 'customColor' || k === 'w' || k === 'h') (local as any)[k] = v;
+        else (shared as any)[k] = v;
+      }
+      if (Object.keys(local).length > 0) saveListOverlay(id, local);
+      if (Object.keys(shared).length > 0) await db.categories.update(id, shared);
+      set({ categories: get().categories.map((c) => (c.id === id ? { ...c, ...patch } : c)).filter((c) => !c.archived) });
+      return;
+    }
     await db.categories.update(id, patch);
     set({ categories: get().categories.map((c) => (c.id === id ? { ...c, ...patch } : c)).filter((c) => !c.archived) });
+  },
+
+  // --- sharing ---
+
+  shareOf(categoryId) {
+    return get().shares.find((s) => s.listId === categoryId && (s.status === 'invited' || s.status === 'accepted'));
+  },
+
+  async shareList(categoryId, email) {
+    const cat = get().categories.find((c) => c.id === categoryId);
+    if (!cat || cat.system) return 'share_error'; // the Pool never shares
+    if (!supabase) return 'share_error';
+    const { data: sess } = await supabase.auth.getSession();
+    const session = sess.session;
+    if (!session) return 'share_signin_first';
+    const address = email.trim().toLowerCase();
+    if (!address || !address.includes('@')) return 'share_bad_email';
+    if (address === session.user.email?.toLowerCase()) return 'share_bad_email';
+    const now = Date.now();
+    // one share per list: a dead share row (declined/revoked/left) is re-armed
+    const dead = get().shares.find((s) => s.listId === categoryId);
+    const share: Share = dead
+      ? { ...dead, memberId: null, memberEmail: address, status: 'invited', updatedAt: now }
+      : {
+          id: uid(),
+          listId: categoryId,
+          ownerId: session.user.id,
+          ownerEmail: session.user.email ?? '',
+          memberId: null,
+          memberEmail: address,
+          status: 'invited',
+          createdAt: now,
+          updatedAt: now,
+        };
+    if (share.ownerId !== session.user.id) return 'share_not_owner';
+    // sharing is an online, transactional act - the server speaks first
+    const { error } = dead
+      ? await supabase.from('shares').update(shareToRow(share)).eq('id', share.id)
+      : await supabase.from('shares').insert(shareToRow(share));
+    if (error) {
+      console.warn('[share] invite failed', error.message);
+      return 'share_error';
+    }
+    await db.shares.put(share);
+    set({
+      shares: [...get().shares.filter((s) => s.id !== share.id), share],
+      toast: { label: t('toast_invite_sent'), at: Date.now() },
+    });
+    return null;
+  },
+
+  async acceptShare(shareId) {
+    if (!supabase) return;
+    const { data: sess } = await supabase.auth.getSession();
+    const me = sess.session?.user.id;
+    if (!me) return;
+    const now = Date.now();
+    const { error } = await supabase
+      .from('shares')
+      .update({ member_id: me, status: 'accepted', updated_at: now })
+      .eq('id', shareId);
+    if (error) {
+      console.warn('[share] accept failed', error.message);
+      set({ toast: { label: t('share_error'), at: Date.now() } });
+      return;
+    }
+    const s = get().shares.find((x) => x.id === shareId);
+    if (s) await db.shares.put({ ...s, memberId: me, status: 'accepted', updatedAt: now });
+    set({ shares: get().shares.map((x) => (x.id === shareId ? { ...x, memberId: me, status: 'accepted', updatedAt: now } : x)) });
+    // pull backfills the newly opened list past the watermark
+    const { syncNow } = await import('./sync');
+    await syncNow();
+    await get().reloadFromDb();
+  },
+
+  async declineShare(shareId) {
+    if (!supabase) return;
+    const { data: sess } = await supabase.auth.getSession();
+    const me = sess.session?.user.id;
+    if (!me) return;
+    const now = Date.now();
+    const { error } = await supabase
+      .from('shares')
+      .update({ member_id: me, status: 'declined', updated_at: now })
+      .eq('id', shareId);
+    if (error) {
+      console.warn('[share] decline failed', error.message);
+      return;
+    }
+    await db.shares.delete(shareId);
+    set({ shares: get().shares.filter((x) => x.id !== shareId) });
+  },
+
+  async leaveShare(shareId) {
+    if (!supabase) return;
+    const now = Date.now();
+    const { error } = await supabase.from('shares').update({ status: 'left', updated_at: now }).eq('id', shareId);
+    if (error) {
+      console.warn('[share] leave failed', error.message);
+      set({ toast: { label: t('share_error'), at: Date.now() } });
+      return;
+    }
+    const s = get().shares.find((x) => x.id === shareId);
+    if (s) {
+      await db.shares.put({ ...s, status: 'left', updatedAt: now });
+      // the list leaves with the share (my prefs stay - they come back if
+      // I am ever re-invited); pruning also runs on every pull
+      const { withRemote } = await import('./db');
+      await withRemote(async () => {
+        const ids = await db.items.where('categoryId').equals(s.listId).primaryKeys();
+        await db.items.bulkDelete(ids as string[]);
+        await db.categories.delete(s.listId);
+      });
+    }
+    await get().reloadFromDb();
+  },
+
+  async revokeShare(shareId) {
+    if (!supabase) return;
+    const now = Date.now();
+    const { error } = await supabase.from('shares').update({ status: 'revoked', updated_at: now }).eq('id', shareId);
+    if (error) {
+      console.warn('[share] revoke failed', error.message);
+      set({ toast: { label: t('share_error'), at: Date.now() } });
+      return;
+    }
+    const s = get().shares.find((x) => x.id === shareId);
+    if (s) await db.shares.put({ ...s, status: 'revoked', updatedAt: now });
+    set({ shares: get().shares.map((x) => (x.id === shareId ? { ...x, status: 'revoked', updatedAt: now } : x)) });
   },
 
   setView(view) {
@@ -440,6 +692,12 @@ export const useSeder = create<SederState>((set, get) => {
     const cat = get().categories.find((c) => c.id === id);
     const pool = get().categories.find((c) => c.system);
     if (!cat || cat.system || !pool) return;
+    // a member never deletes the shared list - leaving is their move
+    const share = get().shareOf(id);
+    if (share && share.status === 'accepted') {
+      const owner = await ownerId();
+      if (share.ownerId !== owner) return;
+    }
     pushUndo(t('toast_list_deleted'));
     const movedIds = get()
       .items.filter((i) => i.categoryId === id)
@@ -456,20 +714,11 @@ export const useSeder = create<SederState>((set, get) => {
 
   async applyMatrixDrop(dragId, flags, orderedIds) {
     pushUndo();
-    const now = Date.now();
-    const orderOf = new Map(orderedIds.map((id, i) => [id, (i + 1) * 1000]));
-    await db.transaction('rw', db.items, async () => {
-      await db.items.update(dragId, { urgent: flags.urgent, important: flags.important, updatedAt: now });
-      for (const [id, ord] of orderOf) await db.items.update(id, { matrixOrder: ord });
-    });
-    set({
-      items: get().items.map((i) => {
-        const patch: Partial<Item> = {};
-        if (i.id === dragId) Object.assign(patch, { urgent: flags.urgent, important: flags.important, updatedAt: now });
-        if (orderOf.has(i.id)) patch.matrixOrder = orderOf.get(i.id);
-        return Object.keys(patch).length ? { ...i, ...patch } : i;
-      }),
-    });
+    // urgent/important/matrixOrder are PERSONAL - my matrix is mine
+    await writePrefs([
+      { itemId: dragId, patch: { urgent: flags.urgent, important: flags.important } },
+      ...orderedIds.map((id, i) => ({ itemId: id, patch: { matrixOrder: (i + 1) * 1000 } as Partial<ItemPrefs> })),
+    ]);
   },
 
   // Central drop executor. Keys:
@@ -532,19 +781,25 @@ export const useSeder = create<SederState>((set, get) => {
     const snapItemIds = new Set(snapshot.items.map((i) => i.id));
     const curCatIds = new Set(get().categories.map((c) => c.id));
     const snapCatIds = new Set(snapshot.categories.map((c) => c.id));
-    await db.transaction('rw', db.items, db.categories, async () => {
+    const curPrefIds = new Set(get().prefs.map((p) => p.id));
+    const snapPrefIds = new Set(snapshot.prefs.map((p) => p.id));
+    await db.transaction('rw', db.items, db.categories, db.prefs, async () => {
       await db.items.bulkPut(snapshot.items);
       await db.categories.bulkPut(snapshot.categories);
+      await db.prefs.bulkPut(snapshot.prefs);
       // records created after the snapshot get removed on undo
       const addedItems = [...curItemIds].filter((id) => !snapItemIds.has(id));
       if (addedItems.length) await db.items.bulkDelete(addedItems);
       const addedCats = [...curCatIds].filter((id) => !snapCatIds.has(id));
       if (addedCats.length) await db.categories.bulkDelete(addedCats);
+      const addedPrefs = [...curPrefIds].filter((id) => !snapPrefIds.has(id));
+      if (addedPrefs.length) await db.prefs.bulkDelete(addedPrefs);
     });
     set({
       undoStack: stack,
       items: snapshot.items,
       categories: snapshot.categories,
+      prefs: snapshot.prefs,
       toast: null,
       openItemId: null,
     });
@@ -665,8 +920,10 @@ export const useSeder = create<SederState>((set, get) => {
     const now = Date.now();
     await db.items.where('id').anyOf([...ids]).modify({ archivedAt: null, deletedAt: null, done: false, doneAt: null, updatedAt: now });
     const restored = await db.items.where('id').anyOf([...ids]).toArray();
+    const owner = await ownerId();
+    const mine = new Map(get().prefs.filter((p) => p.id.startsWith(`${owner}:`)).map((p) => [p.itemId, p]));
     const live = new Set(get().items.map((i) => i.id));
-    set({ items: [...get().items, ...restored.filter((i) => !live.has(i.id))] });
+    set({ items: [...get().items, ...restored.filter((i) => !live.has(i.id)).map((i) => composeItem(i, mine.get(i.id)))] });
   },
   };
 });

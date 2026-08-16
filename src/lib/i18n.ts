@@ -1,5 +1,5 @@
 // React-friendly i18n on top of the design-system dictionary approach.
-// UI chrome strings only — user content is never translated, it renders with
+// UI chrome strings only - user content is never translated, it renders with
 // per-line direction via lib/rtl.ts.
 
 import { useSyncExternalStore } from 'react';
@@ -105,6 +105,26 @@ const DICT: Record<string, { en: string; he: string }> = {
   size_s: { en: 'S', he: 'ק' },
   size_m: { en: 'M', he: 'ב' },
   size_l: { en: 'L', he: 'ג' },
+  // sharing (wiki/sharing.md)
+  share_list: { en: 'Share list', he: 'לשתף רשימה' },
+  shared_mark: { en: 'Shared list', he: 'רשימה משותפת' },
+  share_email_placeholder: { en: 'Their email…', he: 'המייל שלהם…' },
+  send_invite: { en: 'Send invite', he: 'לשלוח הזמנה' },
+  toast_invite_sent: { en: 'Invite sent', he: 'ההזמנה נשלחה' },
+  share_invited_to: { en: 'Invited', he: 'הוזמן' },
+  shared_with: { en: 'Shared with', he: 'משותפת עם' },
+  shared_by: { en: 'Shared by', he: 'משותפת מאת' },
+  revoke_share: { en: 'Stop sharing', he: 'להפסיק את השיתוף' },
+  leave_share: { en: 'Leave this list', he: 'לעזוב את הרשימה' },
+  share_hint: { en: 'They will see and edit this list. Today and matrix stay personal.', he: 'הם יראו ויערכו את הרשימה. היום והמטריצה נשארים אישיים.' },
+  share_signin_first: { en: 'Sign in to share lists', he: 'כדי לשתף צריך להתחבר' },
+  share_bad_email: { en: 'That email does not look right', he: 'המייל הזה לא נראה תקין' },
+  share_error: { en: 'Sharing failed. Try again.', he: 'השיתוף נכשל. נסו שוב.' },
+  share_not_owner: { en: 'Only the list owner can share it', he: 'רק בעלת הרשימה יכולה לשתף' },
+  invite_banner: { en: '{owner} shared "{list}" with you', he: '{owner} שיתפו איתך את "{list}"' },
+  accept: { en: 'Accept', he: 'לקבל' },
+  decline: { en: 'Decline', he: 'לא תודה' },
+  toast_title_conflict: { en: 'Title changed on both sides - kept the newer one', he: 'הכותרת שונתה בשני הצדדים - נשמרה החדשה' },
 };
 
 // The <html lang> attribute is the single source of truth (urlState applies
@@ -132,6 +152,13 @@ export function t(key: string): string {
   const e = DICT[key];
   if (!e) return key;
   return e[currentLang] ?? e.en;
+}
+
+/** t() with {placeholder} substitution, for sentences that carry a name. */
+export function tfmt(key: string, vars: Record<string, string>): string {
+  let s = t(key);
+  for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(v);
+  return s;
 }
 
 export function getLang(): Lang {

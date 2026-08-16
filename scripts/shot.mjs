@@ -4,7 +4,7 @@
 //   query: URL query, e.g. "view=board&theme=dark&cardstyle=tint&seed=fresh"
 // Deterministic: fixed viewport, waits for network idle + fonts.
 
-import { chromium } from 'playwright-core';
+import { launchChromium } from './browser.mjs';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,7 +20,7 @@ const viewport = mobile ? { width: 390, height: 844 } : { width: 1440, height: 9
 
 mkdirSync(join(root, 'shots'), { recursive: true });
 
-const browser = await chromium.launch({ channel: 'chrome', headless: true });
+const browser = await launchChromium();
 const ctx = await browser.newContext({
   viewport,
   deviceScaleFactor: 2,

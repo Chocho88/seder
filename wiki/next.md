@@ -1,6 +1,33 @@
 # Next milestone: shared lists (two owners)
 
-## Handoff prompt (paste into a fresh agent session)
+## STATUS (2026-08-16): BUILT, not yet live
+
+The milestone below is implemented on branch
+`claude/wiki-handoff-execution-75rg30` - model, SQL, sync, UI, docs
+([sharing.md](sharing.md)). It was built in a sandboxed environment with no
+network route to Supabase or Vercel, so the pieces that need the live
+project are handed over, in order:
+
+1. **Paste the SQL once**: open the Supabase SQL editor for project
+   `mzvmhjurvpstlbfzkuid` and run the whole of
+   `supabase/migrations/002_sharing.sql` (idempotent; safe to re-run).
+2. **Merge the branch to `main`** - that deploys. Order matters: SQL first,
+   then merge, or the sharing button errors against missing tables.
+3. **Live two-account check** (10 minutes): sign in as the main account,
+   share "בית" to a `+alias` email, sign in as that alias elsewhere, accept
+   the banner, edit on both sides, check my-today-is-not-hers, leave,
+   re-invite, revoke. The RLS matrix itself is already proven (41 checks,
+   `node scripts/rls-check.mjs` - real Postgres 16 running the shipped SQL
+   with Supabase's auth stubbed); what was NOT exercised is the live
+   Supabase deployment of it, realtime latency, and magic-link auth.
+
+What was verified here and how - see the report in the PR/commit and
+[testing.md](testing.md): tsc + geometry (incl. new share UI) green, split
+model proven, real CDP touch drag into a list card asserted in IndexedDB,
+screenshots desktop+phone HE+EN. The invite banner renders only with a
+session, so it was not visually verified - its CSS is a plain flex row.
+
+## Handoff prompt (original, for reference - the build is done)
 
 ```
 You are continuing Seder, a personal todo app at

@@ -9,7 +9,10 @@
 - **Supabase:** project `mzvmhjurvpstlbfzkuid` (Frankfurt). Public URL +
   anon key ship in `src/lib/publicConfig.ts` (public by design; RLS is the
   guard) - so **no Vercel env vars are needed**. `.env.local` overrides in dev.
-  Schema: `supabase/schema.sql` (already applied). Realtime on. Auth: Email
+  Schema: `supabase/schema.sql` (applied) **plus
+  `supabase/migrations/002_sharing.sql` (shared lists - MUST be applied
+  before the sharing build goes live; paste the whole file once into the SQL
+  editor, it is idempotent)**. Realtime on. Auth: Email
   provider on, "Confirm email" off, Site URL = the vercel URL, redirect
   allow-list = vercel URL + `http://localhost:5183/**`.
 - **Design system:** vendored copy in `vendor/design-system` for a

@@ -1,4 +1,6 @@
--- Seder sync schema. Run once in the Supabase SQL editor.
+-- Seder sync schema (base). Run once in the Supabase SQL editor, THEN run
+-- migrations/002_sharing.sql which adds shared lists (shares, item_prefs,
+-- membership-aware RLS replacing the plain owner policies below).
 -- Local-first: IndexedDB is the working copy; these tables mirror it per user.
 -- Rows are JSON blobs keyed by id - the app owns the shape, the DB owns
 -- ownership + timestamps. Row Level Security keeps every user to their own rows.

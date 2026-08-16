@@ -17,7 +17,8 @@ order; each page is short and load-bearing.
 | 6 | [testing.md](testing.md) | The screenshot rig, geometry invariants, how to verify touch for real |
 | 7 | [deploy.md](deploy.md) | Vercel, Supabase, env, push-to-deploy, icons |
 | 8 | [history.md](history.md) | How we got here - decisions and reversals, so you don't re-argue them |
-| 9 | [next.md](next.md) | The next milestone: shared lists (two owners) - full handoff |
+| 9 | [sharing.md](sharing.md) | Shared lists: the ours/mine split, shares + item_prefs, RLS, ownership |
+| 10 | [next.md](next.md) | Shared-lists milestone: BUILT - what remains to go live |
 
 Golden rules in one breath: keep the calm; every visible string goes through
 `t()` in both languages; user content gets `dirProps()`; never overlay when

@@ -18,6 +18,13 @@ Rules: nesting is free (soft ~3); dragging a sub-item onto a sibling reorders
 it (does NOT promote); deleting cascades to sub-items; restoring a sub-item
 restores its archived parent.
 
+Since sharing: the personal-triage fields (today, todaySince, evening,
+urgent, important, pinned, matrixOrder, suggestSnooze) canonically live in a
+per-user overlay row (`ItemPrefs`, Dexie table `prefs`, server `item_prefs`);
+the store composes them onto the item before components see it, so reads are
+unchanged. The fields remain on Item for legacy fallback only. See
+[sharing.md](sharing.md).
+
 ## The Next Move engine (`nextMove.ts`)
 One natural-language phrase. Starts with an action verb -> **Do** (verb
 becomes an icon). Waiting language ("מחכה ל", "waiting for") -> **Wait**
@@ -30,6 +37,11 @@ archived, system (the Pool), w/h (bento size)`.
 The **Pool** is the intake list: `system: true`, name shown via `t('pool')`,
 undeletable, id = `pool-<userId>` when signed in (`pool-local` before) -
 `ensurePool()` in store.ts folds strays and re-keys on sign-in.
+
+A list can be **shared** with exactly one other account (`Share` in types.ts,
+status invited -> accepted; leave/revoke end it). A shared list's name and
+items are shared; its color and bento size are per-viewer, per device. The
+Pool never shares. Full model: [sharing.md](sharing.md).
 
 ## Sections (`DEFAULT_SECTIONS`)
 `date, suggestions, matrix, evening, done, pinned, lists` - each toggleable

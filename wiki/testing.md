@@ -7,12 +7,25 @@ browser**, and it must be honest. Dev server: `npm run dev` (port 5183,
 ## Commands
 - `npm run check` = `tsc --noEmit` + geometry invariants. Run before every push.
 - `npm run check:geometry` -> `scripts/geometry-check.mjs`: hovers every row
-  in every card at desktop/narrow/phone widths, HE and EN, and fails if any
-  element inside a card crosses the card frame, if actions overlap a title,
-  or if the page scrolls horizontally.
+  AND every card header (tools, share popover, shared mark) at desktop/
+  narrow/phone widths, HE and EN, and fails if any element inside a card
+  crosses the card frame, if actions overlap a title, if the share popover
+  leaves the viewport, if the shared mark renders zero-size, or if the page
+  scrolls horizontally.
+- `node scripts/rls-check.mjs`: boots a throwaway LOCAL Postgres 16, stubs
+  Supabase's auth.uid()/auth.jwt(), applies the SHIPPED schema.sql +
+  002_sharing.sql, and asserts the whole sharing access matrix (41 checks)
+  as owner/member/anon. The honest substitute for live REST-with-JWT when
+  the project is unreachable; it caught two real policy holes during build.
+- `node scripts/split-check.mjs`: the shared/personal field split
+  (shareSplit.ts) - pure node, no browser.
+- `node scripts/touch-check.mjs`: REAL touch (CDP) long-press drag of a row
+  into another list card, asserted in IndexedDB.
 - `node scripts/shot.mjs <name> "<query>" [--mobile] [--full]` -> PNG in
   `shots/`. Query keys: `lang, theme, cardstyle, open=first|<id>, capture=1,
-  seed=fresh` (see urlState.ts).
+  seed=fresh` (see urlState.ts). `scripts/share-shots.mjs` renders the
+  sharing UI states. All rigs launch via `scripts/browser.mjs` (Chrome, then
+  bundled Chromium fallback).
 
 ## Rules learned the hard way
 1. **Touch must be tested with real touch input**: Chromium via CDP

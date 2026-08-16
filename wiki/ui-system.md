@@ -17,12 +17,21 @@ sits behind a "⋯" button (`.item-more`). Hover 380ms -> `HoverCard` preview
 rendering for pinned/evening pointers. `data-cat` on the row supplies
 `--cat-color/--cat-tint`; custom colors are inlined as CSS vars.
 
+## Icons
+Vendor sprite (`vendor/design-system/icons.svg`) via `<use href>`; app-local
+icons are inline React components in `SederIcons.tsx` - NEVER a local .svg
+sprite (Vite inlines small assets as data: URIs and `<use>` cannot resolve a
+fragment inside one; this failed silently once).
+
 ## Cards (`CategoryCard.tsx`, `Board.tsx`)
 Bento grid (`.board-bento`, dense, 8px row unit): each card spans `w`
 columns, natural or fixed `h` (content scrolls). Corner grip resizes,
 double-click resets. Header: color dot (opens the picker - a **portal**, so
 the card's `overflow:hidden` can't clip it), title (double-click renames),
-open count (or "N ✓" when all done), hover tools (sweep, delete). Body:
+open count (or "N ✓" when all done), a small always-on two-person mark when
+the list is shared, hover tools (share popover - see sharing.md - then
+sweep, delete; a member of a shared list gets leave-in-popover instead of
+delete). Body:
 rows in `.card-slot` drop targets (insertion line), a `.card-endzone` while
 dragging (drop at end), labeled done separator, inline add. Card body has
 `overflow-x: clip` - nothing may poke past the frame (geometry test).

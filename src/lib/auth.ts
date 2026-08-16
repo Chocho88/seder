@@ -23,15 +23,14 @@ async function onSession(session: Session | null) {
   }
   if (session) {
     await meta.put({ key: 'owner', value: session.user.id });
-    // the Pool re-keys to this user's canonical id before anything syncs
+    // the Pool and the prefs overlay re-key to this user's canonical ids
+    // before anything syncs
     const { ensurePool, useSeder } = await import('./store');
+    const { ensurePrefs } = await import('./db');
     await ensurePool();
+    await ensurePrefs();
     // reflect the re-key in live state if the app is already running
-    const st = useSeder.getState();
-    if (st.ready) {
-      const [items, categories] = await Promise.all([db.items.filter((i) => i.archivedAt === null).toArray(), db.categories.filter((c) => !c.archived).sortBy('order')]);
-      useSeder.setState({ items, categories });
-    }
+    if (useSeder.getState().ready) await useSeder.getState().reloadFromDb();
   }
   state = { status: session ? 'signed-in' : 'signed-out', session };
   setSyncSession(session);

@@ -5,3 +5,4 @@ references/presskit
 references/*.html
 shots/
 .env.local
+tsconfig.tsbuildinfo

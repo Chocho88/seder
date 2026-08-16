@@ -7,7 +7,10 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import icons from '../../vendor/design-system/icons.svg';
+import { UsersIcon } from './SederIcons';
+import ShareMenu from './ShareMenu';
 import { useSeder, topLevelOf } from '../lib/store';
+import { useAuth } from '../lib/auth';
 import { dirProps } from '../lib/rtl';
 import { t } from '../lib/i18n';
 import { CATEGORY_COLOR_KEYS, type Category } from '../lib/types';
@@ -26,6 +29,7 @@ export default function CategoryCard({ category }: { category: Category }) {
     updateCategory,
     deleteCategory,
     sweepDone,
+    shareOf,
   } = useSeder();
   const [adding, setAdding] = useState('');
   const [over, setOver] = useState(false);
@@ -41,6 +45,11 @@ export default function CategoryCard({ category }: { category: Category }) {
   const dragForeign = dragItemId !== null && items.find((i) => i.id === dragItemId)?.categoryId !== category.id;
   // the Pool is a system list - its name speaks the UI language
   const displayName = category.system ? t('pool') : category.name;
+  const share = shareOf(category.id);
+  const shared = share?.status === 'accepted';
+  const auth = useAuth();
+  // a member never deletes the shared list - leaving lives in the share menu
+  const canDelete = !category.system && !(shared && share!.ownerId !== auth.session?.user.id);
 
   const submit = async () => {
     const title = adding.trim();
@@ -181,9 +190,16 @@ export default function CategoryCard({ category }: { category: Category }) {
         <span className={`category-card-count${open.length === 0 && done.length > 0 ? ' all-done' : ''}`}>
           {open.length > 0 ? open.length : done.length > 0 ? `${done.length} ✓` : 0}
         </span>
+        {/* a shared list wears its two-person mark at all times */}
+        {shared && (
+          <span className="category-card-sharedmark" title={t('shared_mark')} aria-label={t('shared_mark')}>
+            <UsersIcon />
+          </span>
+        )}
 
         {/* header hover actions - quiet until needed */}
         <span className="category-card-tools">
+          <ShareMenu category={category} />
           {done.length > 0 && (
             <button
               className="item-action tooltip"
@@ -200,7 +216,7 @@ export default function CategoryCard({ category }: { category: Category }) {
               </svg>
             </button>
           )}
-          {!category.system && (
+          {canDelete && (
             <button
               className="item-action tooltip"
               data-tooltip={t('delete')}

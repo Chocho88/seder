@@ -12,9 +12,10 @@ import Toast from './components/Toast';
 import TouchDragLayer from './components/TouchDragLayer';
 import LogbookPanel from './components/LogbookPanel';
 import AccountMenu from './components/AccountMenu';
+import InviteBanner from './components/InviteBanner';
 
 // One clean scrollable column on phones: lists on top, matrix below (the
-// user's whiteboard sketch). Desktop is the holistic canvas — no tabs.
+// user's whiteboard sketch). Desktop is the holistic canvas - no tabs.
 const mq = typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)') : null;
 function useIsMobile(): boolean {
   return useSyncExternalStore(
@@ -102,6 +103,7 @@ export default function App() {
         </div>
       </header>
 
+      <InviteBanner />
       <main className="seder-main">
         {!ready ? null : isMobile ? <MobileCanvas /> : <Canvas />}
       </main>
