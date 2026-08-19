@@ -119,4 +119,74 @@ if (!moved.found) await fail(`item "${title}" not found in IndexedDB`);
 if (moved.cat !== moved.want) await fail(`item "${title}" is in ${moved.cat}, expected ${moved.want}`);
 if (!lit) console.log('note: drop target highlight was not observed mid-drag (drop still landed)');
 console.log(`PASS  real CDP touch: long-pressed "${title}", carried it onto card ${targetCatId}, drop verified in IndexedDB`);
+
+// --- scenario 2: drop a row on the TODAY shelf; assert the personal flag.
+// A phone viewport cannot show the top shelf and a list row at once (there
+// is no mid-drag autoscroll), so this runs on a desktop-size TOUCH screen
+// (two-column canvas: shelf top-left, lists top-right, both on screen) -
+// same input path, same drop code. ---
+const ctx2 = await ctx.browser().newContext({
+  viewport: { width: 1440, height: 900 },
+  deviceScaleFactor: 2,
+  hasTouch: true,
+});
+const page2 = await ctx2.newPage();
+const cdp2 = await ctx2.newCDPSession(page2);
+const touch2 = (type, points) => cdp2.send('Input.dispatchTouchEvent', { type, touchPoints: points });
+await page2.goto('http://localhost:5183/?lang=he&theme=light&seed=fresh', { waitUntil: 'networkidle' });
+await page2.waitForTimeout(700);
+
+const shelf = page2.locator('[data-drop="today"]');
+if ((await shelf.count()) === 0) await fail('no Today shelf on the page');
+const source2 = page2.locator('.category-card .card-slot .item-row').first();
+await source2.scrollIntoViewIfNeeded();
+await page2.waitForTimeout(200);
+const src2 = await source2.boundingBox();
+const title2 = (await source2.locator('.item-title').first().textContent())?.trim();
+const shelfBox = await shelf.boundingBox();
+if (!src2 || !shelfBox) await fail('today scenario: source or shelf off screen');
+if (shelfBox.y < 0 || shelfBox.y > 860) await fail('today shelf not within the viewport for the drag');
+
+const s2x = src2.x + src2.width / 2;
+const s2y = src2.y + src2.height / 2;
+await touch2('touchStart', [{ x: s2x, y: s2y, id: 1 }]);
+await page2.waitForTimeout(450);
+if (!(await page2.locator('.touchdrag-ghost').count())) {
+  await touch2('touchEnd', []);
+  await fail('today scenario: long-press did not lift');
+}
+const t2x = shelfBox.x + shelfBox.width / 2;
+const t2y = shelfBox.y + Math.min(30, shelfBox.height / 2);
+for (let i = 1; i <= 12; i++) {
+  await touch2('touchMove', [{ x: s2x + ((t2x - s2x) * i) / 12, y: s2y + ((t2y - s2y) * i) / 12, id: 1 }]);
+  await page2.waitForTimeout(30);
+}
+await touch2('touchEnd', []);
+await page2.waitForTimeout(500);
+
+// today/evening live in the personal prefs overlay - assert THERE
+const flagged = await page2.evaluate(async ({ title2 }) => {
+  const db = await new Promise((res, rej) => {
+    const rq = indexedDB.open('seder');
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+  const get = (store) =>
+    new Promise((res, rej) => {
+      const rq = db.transaction(store).objectStore(store).getAll();
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = () => rej(rq.error);
+    });
+  const items = await get('items');
+  const prefs = await get('prefs');
+  db.close();
+  const it = items.find((i) => i.title === title2);
+  const p = it ? prefs.find((x) => x.itemId === it.id) : null;
+  return { found: !!it, today: p?.today, evening: p?.evening };
+}, { title2 });
+if (!flagged.found) await fail(`today scenario: item "${title2}" not found`);
+if (flagged.today !== true || flagged.evening) {
+  await fail(`today scenario: prefs say today=${flagged.today} evening=${flagged.evening}, expected today=true evening=false`);
+}
+console.log(`PASS  real CDP touch (desktop touchscreen viewport): dropped "${title2}" on the Today shelf, prefs row shows today=true evening=false`);
 await browser.close();

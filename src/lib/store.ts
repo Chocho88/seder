@@ -10,7 +10,7 @@ import { create } from 'zustand';
 import { db, uid, ownerId, ensurePrefs } from './db';
 import { seedIfEmpty } from './seed';
 import { t } from './i18n';
-import { onRemote, onConflict, shareToRow } from './sync';
+import { onRemote, onConflict, onSyncError, shareToRow } from './sync';
 import { supabase } from './supabase';
 import {
   composeItem,
@@ -37,9 +37,19 @@ function loadSections(): SectionPref[] {
     const raw = localStorage.getItem(SECTIONS_KEY);
     if (!raw) return DEFAULT_SECTIONS;
     const saved = JSON.parse(raw) as SectionPref[];
-    // merge: keep saved order, append any new default sections
+    // merge: keep the saved order; a section the app gained since this
+    // device saved (e.g. 'today') slots in at its DEFAULT position, not at
+    // the end - existing devices see new sections where they belong
     const known = new Set(saved.map((s) => s.id));
-    return [...saved.filter((s) => DEFAULT_SECTIONS.some((d) => d.id === s.id)), ...DEFAULT_SECTIONS.filter((d) => !known.has(d.id))];
+    const merged = saved.filter((s) => DEFAULT_SECTIONS.some((d) => d.id === s.id));
+    for (const d of DEFAULT_SECTIONS) {
+      if (known.has(d.id)) continue;
+      const defIdx = DEFAULT_SECTIONS.findIndex((x) => x.id === d.id);
+      const successor = DEFAULT_SECTIONS.slice(defIdx + 1).find((x) => merged.some((m) => m.id === x.id));
+      const at = successor ? merged.findIndex((m) => m.id === successor.id) : merged.length;
+      merged.splice(at, 0, d);
+    }
+    return merged;
   } catch {
     return DEFAULT_SECTIONS;
   }
@@ -313,6 +323,13 @@ export const useSeder = create<SederState>((set, get) => {
     onRemote(() => void get().reloadFromDb());
     // a pending title edit lost to a newer remote one - never silently
     onConflict(() => set({ toast: { label: t('toast_title_conflict'), at: Date.now() } }));
+    // sync trouble is a visible event, once per losing streak
+    onSyncError(() => set({ toast: { label: t('sync_failed'), at: Date.now() } }));
+    // ask the browser to shield IndexedDB from storage eviction - quiet
+    // insurance against "my data vanished from this device"
+    void navigator.storage?.persist?.().then((granted) => {
+      void db.meta.put({ key: 'storagePersisted', value: granted });
+    });
   },
 
   async reloadFromDb() {
@@ -755,6 +772,9 @@ export const useSeder = create<SederState>((set, get) => {
     } else if (parts[0] === 'evening') {
       pushUndo();
       await get().updateItem(dragId, { today: true, evening: true, todaySince: Date.now() });
+    } else if (parts[0] === 'today') {
+      pushUndo();
+      await get().updateItem(dragId, { today: true, evening: false, todaySince: Date.now() });
     } else if (parts[0] === 'row') {
       const target = get().items.find((i) => i.id === parts[1]);
       if (target?.parentId) await get().reorderChild(dragId, parts[1]);

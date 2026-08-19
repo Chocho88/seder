@@ -61,7 +61,14 @@ Remote applies wrap in `withRemote()` so they don't re-enter the outbox.
   older remote one; tombstones delete locally; a lost pending title edit
   toasts once. A newly accepted share backfills its list past the watermark;
   a share that stops being accepted prunes the list from the member device.
-- Realtime channel on all four tables triggers pull; also on focus/online/60s.
+- Realtime channel on all four tables triggers pull; also on
+  focus/online/60s AND on pagehide/hidden (entries typed right before
+  closing the app still leave the device). `syncStatus()` exposes pending
+  count + last-ok time (shown live in AccountMenu); failures toast once per
+  losing streak (`onSyncError`). `navigator.storage.persist()` is requested
+  on init; an account SWITCH stashes a backup-format snapshot in
+  localStorage `seder-recovery` before the wipe (restorable via
+  Settings > Import).
 - First sign-in on a device with local data: `seedOutboxFromLocal()` uploads
   everything once (`meta.seededFor`).
 - Server schema: `id text primary key`; RLS = owner OR accepted member of the

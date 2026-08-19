@@ -15,6 +15,19 @@
   editor, it is idempotent)**. Realtime on. Auth: Email
   provider on, "Confirm email" off, Site URL = the vercel URL, redirect
   allow-list = vercel URL + `http://localhost:5183/**`.
+- **Google sign-in (one-time setup, user-only - nobody else can create keys
+  in their Google account):**
+  1. https://console.cloud.google.com/apis/credentials - create project
+     "seder" if none, then "Create credentials" > "OAuth client ID" >
+     type **Web application**.
+  2. Authorized JavaScript origins: `https://seder-plum.vercel.app`
+     Authorized redirect URI:
+     `https://mzvmhjurvpstlbfzkuid.supabase.co/auth/v1/callback`
+  3. Copy the Client ID and Client secret.
+  4. Supabase dashboard > Authentication > Providers > Google: toggle ON,
+     paste both, Save.
+  The app's Google button works the moment this is saved; until then it
+  shows a quiet "not switched on yet" note and the email link still works.
 - **Design system:** vendored copy in `vendor/design-system` for a
   standalone build; source of truth stays `../design-system`;
   `scripts/sync-design-system.sh` mirrors it (never edit vendor/ directly).

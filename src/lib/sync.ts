@@ -39,6 +39,10 @@ let channel: RealtimeChannel | null = null;
 let pushing = false;
 let onRemoteChange: (() => void) | null = null;
 let onTitleConflict: ((loserTitle: string) => void) | null = null;
+let onSyncFailure: (() => void) | null = null;
+// sync failures surface ONCE per losing streak - a toast, not a siren
+let cycleFailed = false;
+let failureToasted = false;
 
 export function setSyncSession(s: Session | null): void {
   session = s;
@@ -52,6 +56,27 @@ export function onRemote(cb: () => void): void {
 /** A pending local title edit lost to a newer remote one - toast once. */
 export function onConflict(cb: (loserTitle: string) => void): void {
   onTitleConflict = cb;
+}
+
+/** Sync went wrong (network, policies) - the user must SEE it, once. */
+export function onSyncError(cb: () => void): void {
+  onSyncFailure = cb;
+}
+
+function noteFailure(): void {
+  cycleFailed = true;
+  if (!failureToasted) {
+    failureToasted = true;
+    onSyncFailure?.();
+  }
+}
+
+/** What the account panel shows: how many changes wait, when we last
+    fully synced. Polled while the panel is open. */
+export async function syncStatus(): Promise<{ pending: number; lastOk: number | null; signedIn: boolean }> {
+  const pending = await outbox.count();
+  const lastOk = ((await meta.get('lastSyncOk'))?.value as number | undefined) ?? null;
+  return { pending, lastOk, signedIn: session !== null };
 }
 
 const updatedAtOf = (data: Item | Category | ItemPrefs): number =>
@@ -146,6 +171,7 @@ export async function pushOutbox(): Promise<void> {
       const { error } = await supabase.from(serverTable(table)).upsert(rows, { onConflict: 'id' });
       if (error) {
         console.warn('[sync] push failed', table, error.message);
+        noteFailure();
         return; // keep outbox; retry later
       }
     }
@@ -185,6 +211,7 @@ async function pullShares(): Promise<{ changed: boolean; shares: Share[] }> {
   const { data, error } = await supabase.from('shares').select('*');
   if (error) {
     console.warn('[sync] shares pull failed', error.message);
+    noteFailure();
     return { changed: false, shares: await db.shares.toArray() };
   }
   const remote = ((data ?? []) as ShareRow[]).map(rowToShare);
@@ -220,6 +247,7 @@ async function backfillAcceptedShares(shares: Share[]): Promise<boolean> {
     ]);
     if (cats.error || items.error) {
       console.warn('[sync] backfill failed', s.listId, (cats.error ?? items.error)?.message);
+      noteFailure();
       continue;
     }
     for (const row of (cats.data ?? []) as Row[]) changed = (await applyRow('categories', row)) || changed;
@@ -272,6 +300,7 @@ export async function pullChanges(): Promise<boolean> {
     const { data, error } = await query;
     if (error) {
       console.warn('[sync] pull failed', table, error.message);
+      noteFailure();
       return changed;
     }
     for (const row of (data ?? []) as Row[]) {
@@ -319,6 +348,11 @@ async function pullThenNotify() {
 /** Full cycle: push what we have, pull what's new. Safe to call often. */
 export async function syncNow(): Promise<void> {
   if (!supabase || !session) return;
+  cycleFailed = false;
   await pushOutbox();
   await pullThenNotify();
+  if (!cycleFailed) {
+    failureToasted = false; // a clean cycle re-arms the one-shot warning
+    await meta.put({ key: 'lastSyncOk', value: Date.now() });
+  }
 }

@@ -19,6 +19,18 @@ async function onSession(session: Session | null) {
   // wipe local first, so nothing leaks between users sharing a browser.
   const owner = (await meta.get('owner'))?.value as string | undefined;
   if (session && owner && owner !== session.user.id) {
+    // Safety net: the wipe would also destroy any UNPUSHED edits of the
+    // previous account. Stash a snapshot in localStorage (survives the
+    // Dexie clear) in the exact backup-file format, so Settings > Import
+    // can bring it back if this switch was a mistake.
+    try {
+      const [items, categories] = await Promise.all([db.items.toArray(), db.categories.toArray()]);
+      if (items.length || categories.length) {
+        localStorage.setItem('seder-recovery', JSON.stringify({ seder: 1, exportedAt: Date.now(), items, categories }));
+      }
+    } catch (e) {
+      console.warn('[auth] recovery snapshot failed', e);
+    }
     await wipeLocal();
   }
   if (session) {
@@ -54,6 +66,12 @@ if (supabase) {
   window.addEventListener('focus', () => void syncNow());
   window.addEventListener('online', () => void syncNow());
   window.setInterval(() => void syncNow(), 60_000);
+  // ...and when the app is being put away: entries typed right before
+  // closing the phone app must leave the device, not wait for next open
+  window.addEventListener('pagehide', () => void syncNow());
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') void syncNow();
+  });
 }
 
 export function useAuth(): AuthState {
@@ -68,12 +86,18 @@ export function useAuth(): AuthState {
   return s;
 }
 
-export async function signInWithGoogle(): Promise<void> {
-  if (!supabase) return;
-  await supabase.auth.signInWithOAuth({
+/** One-tap Google sign-in. The whole flow stays in THIS browser context -
+    unlike the magic link, which opens in whatever browser the mail app
+    picks and leaves the installed app signed out (the root of the "my data
+    does not sync" pain). Returns an error string when the provider is not
+    enabled yet in Supabase, so the UI can say so instead of failing mute. */
+export async function signInWithGoogle(): Promise<{ error: string | null }> {
+  if (!supabase) return { error: 'unconfigured' };
+  const { error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: window.location.origin },
   });
+  return { error: error?.message ?? null };
 }
 
 /** Magic link: no passwords, no OAuth console - an email with a one-tap link. */

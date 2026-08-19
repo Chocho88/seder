@@ -1,5 +1,14 @@
 # Next milestone: shared lists (two owners)
 
+## ALSO ON THIS BRANCH (2026-08-19): Google sign-in, sync hardening, Today shelf
+
+Built after the user reported sync data loss in daily use: a Google button
+(primary sign-in; needs the one-time provider setup in deploy.md), live
+sync status in the account panel, storage-persist + pre-wipe recovery
+snapshot + flush-on-close, and a Today drop shelf at the top of the canvas
+(twin of Evening; `dropOn('today')`). Same go-live order as below - the SQL
+paste, then merge; the Google provider setup can happen any time after.
+
 ## STATUS (2026-08-16): BUILT, not yet live
 
 The milestone below is implemented on branch

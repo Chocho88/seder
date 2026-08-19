@@ -86,6 +86,32 @@
   background: var(--surface-sunken);
 }
 
+/* the email-link path: same shape as the Google button, one step quieter */
+.account-magic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.account-magic:hover {
+  background: var(--surface-sunken);
+}
+.account-or {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
 .account-form {
   display: flex;
   flex-direction: column;

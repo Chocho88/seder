@@ -57,7 +57,8 @@ notes, dates (deadline / check-in), sub-items, icon toggles footer; Esc
 closes. Logbook - sliding drawer, day groups, search, restore. Settings -
 theme (light/dark/auto), card style, font size (S/M/L via `data-fontsize`),
 colored lists, Sections editor, logbook, backup export/import, reset layout.
-Account - magic link form / avatar + sync now / sign out. All panels are
+Account - Google button (primary) + magic link form / avatar + LIVE sync
+state (pending changes count, last-synced time) + sync now / sign out. All panels are
 positioned physically (`.settings`, `.account` are `direction:ltr` wrappers)
 and become full-width sheets on phones.
 

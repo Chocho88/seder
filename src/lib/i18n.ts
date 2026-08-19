@@ -125,6 +125,17 @@ const DICT: Record<string, { en: string; he: string }> = {
   accept: { en: 'Accept', he: 'לקבל' },
   decline: { en: 'Decline', he: 'לא תודה' },
   toast_title_conflict: { en: 'Title changed on both sides - kept the newer one', he: 'הכותרת שונתה בשני הצדדים - נשמרה החדשה' },
+  // sync visibility + Google sign-in
+  google_not_ready: { en: 'Google sign-in is not switched on yet. Use the email link meanwhile.', he: 'התחברות עם Google עוד לא הופעלה. בינתיים אפשר להיכנס עם קישור במייל.' },
+  or_email: { en: 'or with an email link', he: 'או עם קישור במייל' },
+  sync_failed: { en: 'Sync failed - will keep retrying. Your changes are safe on this device.', he: 'הסנכרון נכשל - ננסה שוב. השינויים שמורים במכשיר הזה.' },
+  sync_pending_n: { en: 'changes waiting to sync', he: 'שינויים ממתינים לסנכרון' },
+  sync_all_clear: { en: 'Everything is synced', he: 'הכל מסונכרן' },
+  last_synced: { en: 'Last synced', he: 'סונכרן לאחרונה' },
+  never_synced: { en: 'Not synced yet on this device', he: 'עוד לא סונכרן במכשיר הזה' },
+  // the Today shelf
+  section_today: { en: 'Today', he: 'היום' },
+  today_shelf_empty: { en: 'Drop a task here for today', he: 'גררו לכאן משימה להיום' },
 };
 
 // The <html lang> attribute is the single source of truth (urlState applies

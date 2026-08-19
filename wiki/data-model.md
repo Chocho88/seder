@@ -44,7 +44,7 @@ items are shared; its color and bento size are per-viewer, per device. The
 Pool never shares. Full model: [sharing.md](sharing.md).
 
 ## Sections (`DEFAULT_SECTIONS`)
-`date, suggestions, matrix, evening, done, pinned, lists` - each toggleable
+`date, today, suggestions, matrix, evening, done, pinned, lists` - each toggleable
 and orderable (Settings > Sections; drag handle on desktop, arrows on
 touch). Persisted in localStorage `seder-sections`. Desktop: sections before
 `lists` render on the matrix side, `lists` and after on the lists side.

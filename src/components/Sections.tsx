@@ -142,6 +142,48 @@ export function SuggestionsSection() {
 }
 
 /* ------------------------------------------------------------------ */
+/* Today shelf - the day's list, one drag away (twin of the Evening one) */
+/* ------------------------------------------------------------------ */
+export function TodaySection() {
+  const { items, dragItemId, dropOn } = useSeder();
+  const [over, setOver] = useState(false);
+  // evening rows keep their own quieter shelf below
+  const todayList = items.filter((i) => i.today && !i.evening && !i.done);
+  const dragging = dragItemId !== null;
+  return (
+    <div
+      className={`canvas-evening canvas-today${dragging ? ' drag-target' : ''}${over ? ' drag-over' : ''}${todayList.length === 0 && !dragging ? ' canvas-evening-empty' : ''}`}
+      data-drop="today"
+      onDragOver={(e) => {
+        if (dragging) {
+          e.preventDefault();
+          setOver(true);
+        }
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={() => {
+        setOver(false);
+        void dropOn('today');
+      }}
+    >
+      <h3 className="canvas-section-label">
+        <svg className="icon" aria-hidden="true">
+          <use href={`${icons}#icon-sun`} />
+        </svg>
+        {t('section_today')}
+      </h3>
+      <div className="canvas-card-body">
+        {todayList.length === 0 ? (
+          <p className="canvas-empty-hint">{t('today_shelf_empty')}</p>
+        ) : (
+          todayList.map((i) => <ItemRow key={i.id} item={i} leaf reference />)
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* This Evening shelf                                                    */
 /* ------------------------------------------------------------------ */
 export function EveningSection() {
@@ -266,6 +308,8 @@ export function renderSection(id: SectionId, opts: { matrixLip?: React.ReactNode
   switch (id) {
     case 'date':
       return <DateSection />;
+    case 'today':
+      return <TodaySection />;
     case 'suggestions':
       return <SuggestionsSection />;
     case 'pinned':

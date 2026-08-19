@@ -109,13 +109,14 @@ export type ViewId = 'today' | 'board' | 'matrix' | 'all';
 export type CardStyle = 'mono' | 'tint' | 'header';
 
 /** Canvas sections: each is a draggable, toggleable block. */
-export type SectionId = 'date' | 'suggestions' | 'pinned' | 'matrix' | 'evening' | 'done' | 'lists';
+export type SectionId = 'date' | 'today' | 'suggestions' | 'pinned' | 'matrix' | 'evening' | 'done' | 'lists';
 export interface SectionPref {
   id: SectionId;
   on: boolean;
 }
 export const DEFAULT_SECTIONS: SectionPref[] = [
   { id: 'date', on: true },
+  { id: 'today', on: true }, // the Today shelf - first thing under the date
   { id: 'suggestions', on: true },
   { id: 'matrix', on: true },
   { id: 'evening', on: true },
