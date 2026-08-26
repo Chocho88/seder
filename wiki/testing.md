@@ -21,6 +21,13 @@ browser**, and it must be honest. Dev server: `npm run dev` (port 5183,
   (shareSplit.ts) - pure node, no browser.
 - `node scripts/touch-check.mjs`: REAL touch (CDP) long-press drag of a row
   into another list card, asserted in IndexedDB.
+- **Live diagnostics** (served by the deployment itself, reachable even
+  when a sandbox cannot talk to Supabase directly):
+  `GET seder-plum.vercel.app/api/health` reports which tables exist and
+  which auth providers are on; `GET /api/selftest` signs in as the isolated
+  `seder-selftest@seder-diag.dev` user and runs the app's exact push/pull
+  protocol step by step, reporting each failure verbatim. Public facts
+  only; RLS isolates the test user.
 - `node scripts/shot.mjs <name> "<query>" [--mobile] [--full]` -> PNG in
   `shots/`. Query keys: `lang, theme, cardstyle, open=first|<id>, capture=1,
   seed=fresh` (see urlState.ts). `scripts/share-shots.mjs` renders the

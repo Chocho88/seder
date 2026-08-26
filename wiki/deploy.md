@@ -36,6 +36,9 @@
   Haemeq). iOS caches home-screen icons: remove + re-add to refresh.
 - **Production behavior:** demo seed runs only in DEV or `?seed=fresh`; a
   fresh device starts with an empty Pool and fills from sync after sign-in.
+- **Diagnostics:** `/api/health` (tables + providers) and `/api/selftest`
+  (full authed sync protocol as an isolated test user) run ON the Vercel
+  deployment - see testing.md. First stop for any "sync is broken" report.
 - Dashboard access: the app's browser pane held a Supabase session once; if
   it's gone, the user signs in with "in." and you drive - never send them
   clicking.
