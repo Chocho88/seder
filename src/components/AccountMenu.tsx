@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import icons from '../../vendor/design-system/icons.svg';
 import { GoogleIcon } from './SederIcons';
 import { useAuth, signInWithEmail, signInWithGoogle, signOut, syncNow } from '../lib/auth';
-import { syncStatus } from '../lib/sync';
+import { syncStatus, probeRoundTrip } from '../lib/sync';
 import { t, useLang } from '../lib/i18n';
 import './account.css';
 
@@ -23,6 +23,7 @@ export default function AccountMenu() {
     lastError: string | null;
     sharingReady: boolean;
   } | null>(null);
+  const [probe, setProbe] = useState<'idle' | 'running' | { ok: boolean; ms?: number; error?: string }>('idle');
   const ref = useRef<HTMLDivElement>(null);
 
   const sendLink = async () => {
@@ -110,6 +111,30 @@ export default function AccountMenu() {
                 </svg>
                 {t('sync_now')}
               </button>
+              <button
+                className="settings-action pressable"
+                disabled={probe === 'running'}
+                onClick={async () => {
+                  setProbe('running');
+                  setProbe(await probeRoundTrip());
+                }}
+              >
+                <svg className="icon icon-sm">
+                  <use href={`${icons}#icon-bolt`} />
+                </svg>
+                {probe === 'idle'
+                  ? t('sync_check')
+                  : probe === 'running'
+                    ? '…'
+                    : probe.ok
+                      ? `${t('sync_check_ok')} · ${probe.ms}ms ✓`
+                      : `${t('sync_check_fail')}`}
+              </button>
+              {typeof probe === 'object' && !probe.ok && probe.error && (
+                <p className="account-sync-error" dir="ltr">
+                  {probe.error}
+                </p>
+              )}
               <button className="settings-action pressable" onClick={() => void signOut()}>
                 <svg className="icon icon-sm">
                   <use href={`${icons}#icon-logout`} />

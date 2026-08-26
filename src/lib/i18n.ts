@@ -144,6 +144,9 @@ const DICT: Record<string, { en: string; he: string }> = {
   recovery_restore: { en: 'Bring them into this account', he: 'להעביר אותן לחשבון הזה' },
   recovery_dismiss: { en: 'Not needed', he: 'אין צורך' },
   recovery_done: { en: 'Restored - syncing to your account', he: 'שוחזר - מסתנכרן לחשבון שלך' },
+  sync_check: { en: 'Test sync on this device', he: 'לבדוק סנכרון במכשיר הזה' },
+  sync_check_ok: { en: 'Sync works on this device', he: 'הסנכרון עובד במכשיר הזה' },
+  sync_check_fail: { en: 'Sync test failed', he: 'בדיקת הסנכרון נכשלה' },
 };
 
 // The <html lang> attribute is the single source of truth (urlState applies

@@ -420,6 +420,28 @@ async function pullThenNotify() {
   if (await pullChanges()) onRemoteChange?.();
 }
 
+/** One-tap proof for THIS device: write a probe row through the real
+    server and read it back. Green + milliseconds, or the exact error.
+    The probe lives in item_prefs under a reserved id - my own row, never
+    rendered (no item carries that id), overwritten on every check. */
+export async function probeRoundTrip(): Promise<{ ok: boolean; ms?: number; error?: string }> {
+  if (!supabase) return { ok: false, error: 'unconfigured' };
+  if (!session) return { ok: false, error: 'signed-out' };
+  const uid = session.user.id;
+  const id = `${uid}:sync-probe`;
+  const stamp = Date.now();
+  const t0 = performance.now();
+  const up = await supabase.from('item_prefs').upsert(
+    { id, user_id: uid, item_id: 'sync-probe', data: { stamp }, updated_at: stamp, deleted: false },
+    { onConflict: 'id' },
+  );
+  if (up.error) return { ok: false, error: up.error.message };
+  const back = await supabase.from('item_prefs').select('data').eq('id', id).single();
+  if (back.error) return { ok: false, error: back.error.message };
+  if ((back.data?.data as { stamp?: number })?.stamp !== stamp) return { ok: false, error: 'probe mismatch' };
+  return { ok: true, ms: Math.round(performance.now() - t0) };
+}
+
 /** Full cycle: push what we have, pull what's new. Safe to call often. */
 export async function syncNow(): Promise<void> {
   if (!supabase || !session) return;
