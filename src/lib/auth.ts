@@ -67,10 +67,13 @@ if (supabase) {
   window.addEventListener('online', () => void syncNow());
   window.setInterval(() => void syncNow(), 60_000);
   // ...and when the app is being put away: entries typed right before
-  // closing the phone app must leave the device, not wait for next open
+  // closing the phone app must leave the device, not wait for next open.
+  // Coming BACK is just as important: iOS PWAs resume with a
+  // visibilitychange (focus does not always fire), and that is exactly the
+  // "I opened the app, show me what changed on the other device" moment.
   window.addEventListener('pagehide', () => void syncNow());
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') void syncNow();
+    void syncNow(); // hidden: flush out; visible: pull in
   });
 }
 

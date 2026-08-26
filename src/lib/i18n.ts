@@ -139,6 +139,11 @@ const DICT: Record<string, { en: string; he: string }> = {
   // sync diagnostics
   sharing_not_installed: { en: 'Sharing is not set up on the server yet (the SQL file was not run). Lists and tasks still sync.', he: 'השיתוף עוד לא הותקן בשרת (קובץ ה-SQL לא הורץ). רשימות ומשימות ממשיכות להסתנכרן.' },
   sync_error_detail: { en: 'Last error', he: 'שגיאה אחרונה' },
+  // previous-account recovery
+  recovery_found: { en: 'Found {n} tasks saved from a previous sign-in on this device', he: 'נמצאו {n} משימות שנשמרו מהתחברות קודמת במכשיר הזה' },
+  recovery_restore: { en: 'Bring them into this account', he: 'להעביר אותן לחשבון הזה' },
+  recovery_dismiss: { en: 'Not needed', he: 'אין צורך' },
+  recovery_done: { en: 'Restored - syncing to your account', he: 'שוחזר - מסתנכרן לחשבון שלך' },
 };
 
 // The <html lang> attribute is the single source of truth (urlState applies

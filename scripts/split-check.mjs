@@ -16,7 +16,7 @@ if (!process.env.SEDER_SPLIT_CHILD) {
   process.exit(r.status ?? 1);
 }
 
-const { PERSONAL_FIELDS, splitPatch, composeItem, prefsFromItem, neutralizeShared, prefsId, isMissingTableError } =
+const { PERSONAL_FIELDS, splitPatch, composeItem, prefsFromItem, neutralizeShared, prefsId, isMissingTableError, rekeySnapshot } =
   await import(join(dirname(self), '../src/lib/shareSplit.ts'));
 
 let failures = 0;
@@ -135,6 +135,35 @@ const item = {
   check('an RLS denial is NOT a missing table', !isMissingTableError({ code: '42501', message: 'new row violates row-level security policy' }));
   check('a network error is NOT a missing table', !isMissingTableError({ message: 'TypeError: Failed to fetch' }));
   check('null is NOT a missing table', !isMissingTableError(null));
+}
+
+// 8. recovery re-keying: fresh ids, remapped links, pool folded, archived left behind
+{
+  let n = 0;
+  const newId = () => `new-${++n}`;
+  const snap = {
+    categories: [
+      { id: 'old-pool', name: 'Pool', system: true, archived: false, colorKey: 'fog', order: -1 },
+      { id: 'old-cat', name: 'בית', archived: false, colorKey: 'sage', order: 0 },
+      { id: 'old-arch', name: 'gone', archived: true, colorKey: 'clay', order: 1 },
+    ],
+    items: [
+      { ...item, id: 'old-a', categoryId: 'old-cat', parentId: null },
+      { ...item, id: 'old-b', categoryId: 'old-cat', parentId: 'old-a' },
+      { ...item, id: 'old-c', categoryId: 'old-pool', parentId: null },
+      { ...item, id: 'old-d', categoryId: 'old-cat', parentId: null, archivedAt: 123 },
+    ],
+  };
+  const out = rekeySnapshot(snap, { poolId: 'my-pool', ownerId: 'me', nextOrder: 5, newId });
+  check('rekey: archived category dropped', out.categories.length === 1 && out.categories[0].name === 'בית');
+  check('rekey: category got a fresh id and appended order', out.categories[0].id !== 'old-cat' && out.categories[0].order === 5);
+  check('rekey: archived item left behind', out.items.length === 3);
+  const a = out.items.find((i) => i.title === item.title && i.parentId === null && i.categoryId === out.categories[0].id);
+  const bItem = out.items.find((i) => i.parentId !== null);
+  check('rekey: sub-item follows its re-keyed parent', bItem?.parentId === a?.id);
+  check('rekey: old pool items fold into MY pool', out.items.some((i) => i.categoryId === 'my-pool'));
+  check('rekey: no old id survives', out.items.every((i) => !i.id.startsWith('old-')) && out.categories.every((c) => !c.id.startsWith('old-')));
+  check('rekey: every item gets my prefs row', out.prefs.length === out.items.length && out.prefs.every((p) => p.id.startsWith('me:')));
 }
 
 console.log(failures === 0 ? '\nALL SPLIT CHECKS PASSED' : `\n${failures} failure(s)`);

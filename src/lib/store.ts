@@ -16,6 +16,7 @@ import {
   composeItem,
   prefsFromItem,
   prefsId,
+  rekeySnapshot,
   splitPatch,
   type ItemPrefs,
 } from './shareSplit';
@@ -57,6 +58,21 @@ function loadSections(): SectionPref[] {
 
 // A shared list looks like any list, but its color and bento size are the
 // VIEWER's, per device - they live here, not on the shared row.
+// The account-switch wipe stashes the previous account's data here (auth.ts)
+// so a wrong-account sign-in can never lose work - the banner restores it.
+const RECOVERY_KEY = 'seder-recovery';
+type RecoverySnapshot = { seder: number; exportedAt: number; items: Item[]; categories: Category[] };
+function loadRecovery(): RecoverySnapshot | null {
+  try {
+    const raw = localStorage.getItem(RECOVERY_KEY);
+    if (!raw) return null;
+    const snap = JSON.parse(raw) as RecoverySnapshot;
+    return snap.seder === 1 && Array.isArray(snap.items) ? snap : null;
+  } catch {
+    return null;
+  }
+}
+
 const LIST_PREFS_KEY = 'seder-list-prefs';
 type ListOverlay = Partial<Pick<Category, 'colorKey' | 'customColor' | 'w' | 'h'>>;
 function loadListOverlays(): Record<string, ListOverlay> {
@@ -118,6 +134,11 @@ interface SederState {
   // --- lifecycle ---
   init(): Promise<void>;
   reloadFromDb(): Promise<void>;
+
+  // --- recovery: the pre-wipe snapshot of a previous account ---
+  recovery: { exportedAt: number; itemCount: number } | null;
+  restoreRecovery(): Promise<void>;
+  dismissRecovery(): void;
 
   // --- item actions ---
   addItem(partial: Partial<Item> & Pick<Item, 'title' | 'categoryId'>): Promise<Item>;
@@ -285,6 +306,10 @@ export const useSeder = create<SederState>((set, get) => {
   logbookOpen: false,
   sections: loadSections(),
   dragSectionId: null,
+  recovery: (() => {
+    const snap = loadRecovery();
+    return snap ? { exportedAt: snap.exportedAt, itemCount: snap.items.filter((i) => i.archivedAt === null).length } : null;
+  })(),
 
   async init() {
     // Demo seed only in dev (or on explicit ?seed=fresh). In production a
@@ -335,6 +360,37 @@ export const useSeder = create<SederState>((set, get) => {
   async reloadFromDb() {
     const fresh = await loadAll();
     set({ items: fresh.items, categories: fresh.categories, prefs: fresh.prefs, shares: fresh.shares });
+  },
+
+  async restoreRecovery() {
+    // Bring the previous account's lists into THIS account. Every row gets
+    // a fresh id: the old ids still exist on the server under the previous
+    // account, and reusing them would collide on the shared tables.
+    const snap = loadRecovery();
+    if (!snap) return;
+    const owner = await ownerId();
+    const pool = get().categories.find((c) => c.system);
+    const { categories: newCats, items: newItems, prefs: newPrefs } = rekeySnapshot(snap, {
+      poolId: pool?.id ?? null,
+      ownerId: owner,
+      nextOrder: get().categories.length,
+      newId: uid,
+    });
+    await db.transaction('rw', db.items, db.categories, db.prefs, async () => {
+      if (newCats.length) await db.categories.bulkAdd(newCats);
+      if (newItems.length) await db.items.bulkAdd(newItems);
+      if (newPrefs.length) await db.prefs.bulkPut(newPrefs);
+    });
+    localStorage.removeItem(RECOVERY_KEY);
+    set({ recovery: null, toast: { label: t('recovery_done'), at: Date.now(), undoable: false } });
+    await get().reloadFromDb();
+    const { syncNow } = await import('./sync');
+    await syncNow(); // the restored rows ride the outbox up to this account
+  },
+
+  dismissRecovery() {
+    localStorage.removeItem(RECOVERY_KEY);
+    set({ recovery: null });
   },
 
   async addItem(partial) {

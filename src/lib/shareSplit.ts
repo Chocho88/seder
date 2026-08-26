@@ -6,7 +6,7 @@
 // Personal: where the task sits in MY day - today, matrix flags, pin, order.
 // nudge stays shared: it belongs to the task's waiting state, next to due.
 
-import type { Item } from './types';
+import type { Category, Item } from './types';
 
 /** Personal triage overlay - one row per (user, item) in item_prefs. */
 export interface ItemPrefs {
@@ -126,6 +126,44 @@ export function composeItem(item: Item, prefs: ItemPrefs | undefined): Item {
     matrixOrder: prefs.matrixOrder,
     suggestSnooze: prefs.suggestSnooze,
   };
+}
+
+/** Re-key a recovery snapshot (a previous account's data) for THIS account:
+    every row gets a fresh id (the old ids exist server-side under the other
+    account and would collide), category/parent links are remapped, the old
+    Pool folds into the current one, archived rows stay behind. Pure - the
+    id generator is injected so tests are deterministic. */
+export function rekeySnapshot(
+  snap: { items: Item[]; categories: Category[] },
+  opts: { poolId: string | null; ownerId: string; nextOrder: number; newId: () => string },
+): { categories: Category[]; items: Item[]; prefs: ItemPrefs[] } {
+  const catMap = new Map<string, string>();
+  const categories: Category[] = [];
+  for (const c of snap.categories) {
+    if (c.archived) continue;
+    if (c.system) {
+      if (opts.poolId) catMap.set(c.id, opts.poolId);
+      continue;
+    }
+    const id = opts.newId();
+    catMap.set(c.id, id);
+    categories.push({ ...c, id, order: opts.nextOrder + categories.length });
+  }
+  const itemMap = new Map(snap.items.map((i) => [i.id, opts.newId()]));
+  const items: Item[] = [];
+  const prefs: ItemPrefs[] = [];
+  for (const i of snap.items) {
+    if (i.archivedAt !== null) continue;
+    const restored: Item = {
+      ...i,
+      id: itemMap.get(i.id)!,
+      categoryId: catMap.get(i.categoryId) ?? opts.poolId ?? i.categoryId,
+      parentId: i.parentId ? (itemMap.get(i.parentId) ?? null) : null,
+    };
+    items.push(restored);
+    prefs.push(prefsFromItem(opts.ownerId, restored));
+  }
+  return { categories, items, prefs };
 }
 
 /** Strip personal fields to NEUTRAL values for the row that goes to the

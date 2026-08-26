@@ -13,6 +13,7 @@ import TouchDragLayer from './components/TouchDragLayer';
 import LogbookPanel from './components/LogbookPanel';
 import AccountMenu from './components/AccountMenu';
 import InviteBanner from './components/InviteBanner';
+import RecoveryBanner from './components/RecoveryBanner';
 
 // One clean scrollable column on phones: lists on top, matrix below (the
 // user's whiteboard sketch). Desktop is the holistic canvas - no tabs.
@@ -104,6 +105,7 @@ export default function App() {
       </header>
 
       <InviteBanner />
+      <RecoveryBanner />
       <main className="seder-main">
         {!ready ? null : isMobile ? <MobileCanvas /> : <Canvas />}
       </main>
