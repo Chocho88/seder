@@ -18,9 +18,12 @@ export default function Toast() {
   return (
     <div className="toast-undo" role="status">
       <span>{toast.label}</span>
-      <button className="toast-undo-btn pressable" onClick={() => void undo()}>
-        {t('undo')}
-      </button>
+      {/* info toasts (sync trouble, conflicts, invites) have nothing to undo */}
+      {toast.undoable !== false && (
+        <button className="toast-undo-btn pressable" onClick={() => void undo()}>
+          {t('undo')}
+        </button>
+      )}
     </div>
   );
 }

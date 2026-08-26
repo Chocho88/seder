@@ -148,6 +148,20 @@
   font-size: var(--text-xs);
   color: var(--color-error);
 }
+/* diagnostic lines under the sync state: quiet, wrap, never shout */
+.account-sync-error {
+  margin-block-start: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-error);
+  overflow-wrap: anywhere;
+  text-align: start;
+}
+.account-sync-note {
+  margin-block-start: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-align: start;
+}
 
 /* Phone: the panel becomes a full-width sheet under the header, whichever
    side its button sits on (fixes the off-screen cutoff on iPhone). */

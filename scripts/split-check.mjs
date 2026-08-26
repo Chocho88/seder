@@ -16,9 +16,8 @@ if (!process.env.SEDER_SPLIT_CHILD) {
   process.exit(r.status ?? 1);
 }
 
-const { PERSONAL_FIELDS, splitPatch, composeItem, prefsFromItem, neutralizeShared, prefsId } = await import(
-  join(dirname(self), '../src/lib/shareSplit.ts')
-);
+const { PERSONAL_FIELDS, splitPatch, composeItem, prefsFromItem, neutralizeShared, prefsId, isMissingTableError } =
+  await import(join(dirname(self), '../src/lib/shareSplit.ts'));
 
 let failures = 0;
 const check = (name, ok) => {
@@ -119,6 +118,23 @@ const item = {
   const once = composeItem(item, prefs);
   const twice = composeItem(once, prefs);
   check('compose twice = compose once', JSON.stringify(once) === JSON.stringify(twice));
+}
+
+// 7. missing-table classification: "sharing not installed" vs real failure
+{
+  check('42P01 is a missing table', isMissingTableError({ code: '42P01', message: 'x' }));
+  check('PGRST205 is a missing table', isMissingTableError({ code: 'PGRST205', message: 'x' }));
+  check(
+    'schema-cache message is a missing table',
+    isMissingTableError({ message: "Could not find the table 'public.item_prefs' in the schema cache" }),
+  );
+  check(
+    'relation-does-not-exist message is a missing table',
+    isMissingTableError({ message: 'relation "public.shares" does not exist' }),
+  );
+  check('an RLS denial is NOT a missing table', !isMissingTableError({ code: '42501', message: 'new row violates row-level security policy' }));
+  check('a network error is NOT a missing table', !isMissingTableError({ message: 'TypeError: Failed to fetch' }));
+  check('null is NOT a missing table', !isMissingTableError(null));
 }
 
 console.log(failures === 0 ? '\nALL SPLIT CHECKS PASSED' : `\n${failures} failure(s)`);

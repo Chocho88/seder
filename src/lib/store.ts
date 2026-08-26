@@ -10,7 +10,7 @@ import { create } from 'zustand';
 import { db, uid, ownerId, ensurePrefs } from './db';
 import { seedIfEmpty } from './seed';
 import { t } from './i18n';
-import { onRemote, onConflict, onSyncError, shareToRow } from './sync';
+import { onRemote, onConflict, onSyncError, shareToRow, isMissingTableError } from './sync';
 import { supabase } from './supabase';
 import {
   composeItem,
@@ -106,7 +106,7 @@ interface SederState {
 
   // Undo: full state snapshots, restored by Cmd+Z or toast
   undoStack: { items: Item[]; categories: Category[]; prefs: ItemPrefs[] }[];
-  toast: { label: string; at: number } | null;
+  toast: { label: string; at: number; undoable?: boolean } | null;
 
   suggestionsOn: boolean; // settings: morning suggestions visibility
   logbookOpen: boolean;
@@ -322,9 +322,9 @@ export const useSeder = create<SederState>((set, get) => {
     // reload the live state
     onRemote(() => void get().reloadFromDb());
     // a pending title edit lost to a newer remote one - never silently
-    onConflict(() => set({ toast: { label: t('toast_title_conflict'), at: Date.now() } }));
+    onConflict(() => set({ toast: { label: t('toast_title_conflict'), at: Date.now(), undoable: false } }));
     // sync trouble is a visible event, once per losing streak
-    onSyncError(() => set({ toast: { label: t('sync_failed'), at: Date.now() } }));
+    onSyncError(() => set({ toast: { label: t('sync_failed'), at: Date.now(), undoable: false } }));
     // ask the browser to shield IndexedDB from storage eviction - quiet
     // insurance against "my data vanished from this device"
     void navigator.storage?.persist?.().then((granted) => {
@@ -514,12 +514,13 @@ export const useSeder = create<SederState>((set, get) => {
       : await supabase.from('shares').insert(shareToRow(share));
     if (error) {
       console.warn('[share] invite failed', error.message);
-      return 'share_error';
+      // the server has no shares table yet: name the real cause
+      return isMissingTableError(error) ? 'sharing_not_installed' : 'share_error';
     }
     await db.shares.put(share);
     set({
       shares: [...get().shares.filter((s) => s.id !== share.id), share],
-      toast: { label: t('toast_invite_sent'), at: Date.now() },
+      toast: { label: t('toast_invite_sent'), at: Date.now(), undoable: false },
     });
     return null;
   },
@@ -536,7 +537,7 @@ export const useSeder = create<SederState>((set, get) => {
       .eq('id', shareId);
     if (error) {
       console.warn('[share] accept failed', error.message);
-      set({ toast: { label: t('share_error'), at: Date.now() } });
+      set({ toast: { label: t('share_error'), at: Date.now(), undoable: false } });
       return;
     }
     const s = get().shares.find((x) => x.id === shareId);
@@ -572,7 +573,7 @@ export const useSeder = create<SederState>((set, get) => {
     const { error } = await supabase.from('shares').update({ status: 'left', updated_at: now }).eq('id', shareId);
     if (error) {
       console.warn('[share] leave failed', error.message);
-      set({ toast: { label: t('share_error'), at: Date.now() } });
+      set({ toast: { label: t('share_error'), at: Date.now(), undoable: false } });
       return;
     }
     const s = get().shares.find((x) => x.id === shareId);
@@ -596,7 +597,7 @@ export const useSeder = create<SederState>((set, get) => {
     const { error } = await supabase.from('shares').update({ status: 'revoked', updated_at: now }).eq('id', shareId);
     if (error) {
       console.warn('[share] revoke failed', error.message);
-      set({ toast: { label: t('share_error'), at: Date.now() } });
+      set({ toast: { label: t('share_error'), at: Date.now(), undoable: false } });
       return;
     }
     const s = get().shares.find((x) => x.id === shareId);

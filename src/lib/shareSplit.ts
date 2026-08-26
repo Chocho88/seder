@@ -44,6 +44,22 @@ export function isPersonalField(key: string): key is PersonalField {
 
 export const prefsId = (userId: string, itemId: string): string => `${userId}:${itemId}`;
 
+/** PostgREST's "this table does not exist" fingerprints. The sharing tables
+    are optional server furniture (until 002_sharing.sql runs); this is how
+    the sync engine tells "sharing not installed" from a real failure. */
+export function isMissingTableError(err: { code?: string; message?: string } | null | undefined): boolean {
+  if (!err) return false;
+  const msg = err.message ?? '';
+  return (
+    err.code === '42P01' ||
+    err.code === 'PGRST205' ||
+    err.code === 'PGRST200' ||
+    /relation .* does not exist/i.test(msg) ||
+    /could not find the table/i.test(msg) ||
+    /schema cache/i.test(msg)
+  );
+}
+
 /** Neutral overlay for an item nobody triaged yet. */
 export function emptyPrefs(userId: string, itemId: string, at: number): ItemPrefs {
   return {

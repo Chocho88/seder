@@ -16,7 +16,7 @@
 
 import type { RealtimeChannel, Session } from '@supabase/supabase-js';
 import { db, outbox, meta, withRemote, type OutboxTable } from './db';
-import { neutralizeShared, type ItemPrefs } from './shareSplit';
+import { isMissingTableError, neutralizeShared, type ItemPrefs } from './shareSplit';
 import { supabase } from './supabase';
 import type { Category, Item, Share } from './types';
 
@@ -47,6 +47,10 @@ let failureToasted = false;
 export function setSyncSession(s: Session | null): void {
   session = s;
   if (!s) stopRealtime();
+  else
+    void meta.get('sharingReady').then((r) => {
+      if (r?.value === false) sharingReady = false;
+    });
 }
 
 export function onRemote(cb: () => void): void {
@@ -63,20 +67,44 @@ export function onSyncError(cb: () => void): void {
   onSyncFailure = cb;
 }
 
-function noteFailure(): void {
+function noteFailure(detail: string): void {
   cycleFailed = true;
+  void meta.put({ key: 'lastSyncError', value: detail });
   if (!failureToasted) {
     failureToasted = true;
     onSyncFailure?.();
   }
 }
 
-/** What the account panel shows: how many changes wait, when we last
-    fully synced. Polled while the panel is open. */
-export async function syncStatus(): Promise<{ pending: number; lastOk: number | null; signedIn: boolean }> {
+// The sharing tables (item_prefs, shares) are OPTIONAL server furniture:
+// until migrations/002_sharing.sql runs, they simply do not exist. That
+// must degrade to "sharing off", never break items/categories sync.
+let sharingReady = true;
+export function isSharingReady(): boolean {
+  return sharingReady;
+}
+export { isMissingTableError };
+function markSharing(ready: boolean): void {
+  if (sharingReady !== ready) {
+    sharingReady = ready;
+    void meta.put({ key: 'sharingReady', value: ready });
+  }
+}
+
+/** What the account panel shows: how many changes wait, when we last fully
+    synced, the last error's text, and whether the server has the sharing
+    tables. Polled while the panel is open. */
+export async function syncStatus(): Promise<{
+  pending: number;
+  lastOk: number | null;
+  signedIn: boolean;
+  lastError: string | null;
+  sharingReady: boolean;
+}> {
   const pending = await outbox.count();
   const lastOk = ((await meta.get('lastSyncOk'))?.value as number | undefined) ?? null;
-  return { pending, lastOk, signedIn: session !== null };
+  const lastError = ((await meta.get('lastSyncError'))?.value as string | undefined) ?? null;
+  return { pending, lastOk, signedIn: session !== null, lastError, sharingReady };
 }
 
 const updatedAtOf = (data: Item | Category | ItemPrefs): number =>
@@ -126,6 +154,10 @@ export async function pushOutbox(): Promise<void> {
     const latest = new Map<string, (typeof entries)[number]>();
     for (const e of entries) latest.set(`${e.table}:${e.rowId}`, e);
     for (const table of ['items', 'categories', 'prefs'] as OutboxTable[]) {
+      // every entry (queue duplicates included) for THIS table, so a
+      // successful upsert drains exactly its own outbox slice - one failing
+      // table must never hold the others' entries hostage
+      const tableSeqs = entries.filter((e) => e.table === table).map((e) => e.seq!);
       const rows: Row[] = [];
       for (const e of latest.values()) {
         if (e.table !== table) continue;
@@ -167,15 +199,25 @@ export async function pushOutbox(): Promise<void> {
           });
         }
       }
-      if (rows.length === 0) continue;
+      if (rows.length === 0) {
+        if (tableSeqs.length) await outbox.bulkDelete(tableSeqs); // stale entries for vanished rows
+        continue;
+      }
       const { error } = await supabase.from(serverTable(table)).upsert(rows, { onConflict: 'id' });
       if (error) {
-        console.warn('[sync] push failed', table, error.message);
-        noteFailure();
-        return; // keep outbox; retry later
+        if (table === 'prefs' && isMissingTableError(error)) {
+          // the sharing migration has not been applied - keep the entries
+          // for the day it is, but this is NOT a sync failure
+          markSharing(false);
+        } else {
+          console.warn('[sync] push failed', table, error.message);
+          noteFailure(`push ${serverTable(table)}: ${error.message}`);
+        }
+        continue; // this table retries later; the others still drain
       }
+      if (table === 'prefs') markSharing(true);
+      await outbox.bulkDelete(tableSeqs);
     }
-    await outbox.where('seq').belowOrEqual(entries[entries.length - 1].seq!).delete();
   } finally {
     pushing = false;
   }
@@ -210,10 +252,14 @@ async function pullShares(): Promise<{ changed: boolean; shares: Share[] }> {
   if (!supabase || !session) return { changed: false, shares: [] };
   const { data, error } = await supabase.from('shares').select('*');
   if (error) {
-    console.warn('[sync] shares pull failed', error.message);
-    noteFailure();
+    if (isMissingTableError(error)) markSharing(false);
+    else {
+      console.warn('[sync] shares pull failed', error.message);
+      noteFailure(`pull shares: ${error.message}`);
+    }
     return { changed: false, shares: await db.shares.toArray() };
   }
+  markSharing(true);
   const remote = ((data ?? []) as ShareRow[]).map(rowToShare);
   const local = await db.shares.toArray();
   const changed =
@@ -247,7 +293,7 @@ async function backfillAcceptedShares(shares: Share[]): Promise<boolean> {
     ]);
     if (cats.error || items.error) {
       console.warn('[sync] backfill failed', s.listId, (cats.error ?? items.error)?.message);
-      noteFailure();
+      noteFailure(`backfill ${s.listId}: ${(cats.error ?? items.error)?.message}`);
       continue;
     }
     for (const row of (cats.data ?? []) as Row[]) changed = (await applyRow('categories', row)) || changed;
@@ -280,17 +326,15 @@ async function pruneLostShares(shares: Share[]): Promise<boolean> {
   return changed;
 }
 
-/** Pull rows changed on the server since our last pull; apply if newer. */
+/** Pull rows changed on the server since our last pull; apply if newer.
+    CORE FIRST: items and categories are the app; the sharing tables are
+    optional extras whose absence or failure must never block them. */
 export async function pullChanges(): Promise<boolean> {
   if (!supabase || !session) return false;
   const since = ((await meta.get('lastPull'))?.value as number | undefined) ?? 0;
   let changed = false;
   let maxSeen = since;
-
-  const sharesResult = await pullShares();
-  changed = sharesResult.changed || changed;
-  changed = (await backfillAcceptedShares(sharesResult.shares)) || changed;
-  changed = (await pruneLostShares(sharesResult.shares)) || changed;
+  let coreOk = true;
 
   for (const table of ['items', 'categories', 'item_prefs'] as Table[]) {
     // items/categories: NO user filter - RLS returns my rows plus the rows
@@ -299,16 +343,36 @@ export async function pullChanges(): Promise<boolean> {
     if (table === 'item_prefs') query = query.eq('user_id', session.user.id);
     const { data, error } = await query;
     if (error) {
+      if (table === 'item_prefs' && isMissingTableError(error)) {
+        markSharing(false); // migration not applied yet - not a failure
+        continue;
+      }
       console.warn('[sync] pull failed', table, error.message);
-      noteFailure();
-      return changed;
+      noteFailure(`pull ${table}: ${error.message}`);
+      if (table !== 'item_prefs') coreOk = false;
+      continue;
     }
+    if (table === 'item_prefs') markSharing(true);
     for (const row of (data ?? []) as Row[]) {
       maxSeen = Math.max(maxSeen, row.updated_at);
       changed = (await applyRow(table, row)) || changed;
     }
   }
-  await meta.put({ key: 'lastPull', value: maxSeen });
+  // advance the watermark only when the core tables pulled clean, so a
+  // failed pull is retried from the same spot instead of skipping rows
+  if (coreOk) await meta.put({ key: 'lastPull', value: maxSeen });
+
+  // sharing extras - each guarded, none may take the pull down
+  try {
+    const sharesResult = await pullShares();
+    changed = sharesResult.changed || changed;
+    if (sharingReady) {
+      changed = (await backfillAcceptedShares(sharesResult.shares)) || changed;
+      changed = (await pruneLostShares(sharesResult.shares)) || changed;
+    }
+  } catch (e) {
+    console.warn('[sync] shares stage failed', e);
+  }
   return changed;
 }
 
@@ -354,5 +418,6 @@ export async function syncNow(): Promise<void> {
   if (!cycleFailed) {
     failureToasted = false; // a clean cycle re-arms the one-shot warning
     await meta.put({ key: 'lastSyncOk', value: Date.now() });
+    await meta.delete('lastSyncError');
   }
 }

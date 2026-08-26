@@ -17,7 +17,12 @@ export default function AccountMenu() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [googleError, setGoogleError] = useState(false);
-  const [status, setStatus] = useState<{ pending: number; lastOk: number | null } | null>(null);
+  const [status, setStatus] = useState<{
+    pending: number;
+    lastOk: number | null;
+    lastError: string | null;
+    sharingReady: boolean;
+  } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   const sendLink = async () => {
@@ -91,6 +96,13 @@ export default function AccountMenu() {
                 {avatar && <img className="account-avatar-lg" src={avatar} alt="" referrerPolicy="no-referrer" />}
                 <div className="account-name">{name}</div>
                 <div className="account-sub">{syncLine}</div>
+                {/* the truth, not a mood: what exactly went wrong last */}
+                {status?.lastError && (
+                  <div className="account-sync-error" dir="ltr">
+                    {t('sync_error_detail')}: {status.lastError}
+                  </div>
+                )}
+                {status && !status.sharingReady && <div className="account-sync-note">{t('sharing_not_installed')}</div>}
               </div>
               <button className="settings-action pressable" onClick={() => void syncNow().then(() => syncStatus().then(setStatus))}>
                 <svg className="icon icon-sm">
