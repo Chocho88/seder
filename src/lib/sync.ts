@@ -392,11 +392,22 @@ export async function seedOutboxFromLocal(): Promise<void> {
   });
 }
 
+// Realtime is the fast lane, not a dependency: when it is not actually
+// delivering (service off, tables missing from the publication), the app
+// tightens its poll instead of leaving a 60s hole between devices.
+let realtimeDelivering = false;
+export function isRealtimeDelivering(): boolean {
+  return realtimeDelivering;
+}
+
 export function startRealtime(): void {
   if (!supabase || !session || channel) return;
   channel = supabase.channel('seder-changes');
   for (const table of ['items', 'categories', 'item_prefs', 'shares']) {
-    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => void pullThenNotify());
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => {
+      realtimeDelivering = true; // an actual event arrived - fast lane works
+      void pullThenNotify();
+    });
   }
   channel.subscribe();
 }

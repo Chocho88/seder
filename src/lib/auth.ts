@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, syncConfigured } from './supabase';
-import { setSyncSession, seedOutboxFromLocal, startRealtime, syncNow, onRemote } from './sync';
+import { setSyncSession, seedOutboxFromLocal, startRealtime, syncNow, onRemote, isRealtimeDelivering } from './sync';
 import { meta, db } from './db';
 
 export type AuthState = { status: 'loading' | 'signed-out' | 'signed-in' | 'unconfigured'; session: Session | null };
@@ -62,10 +62,17 @@ async function onSession(session: Session | null) {
 if (supabase) {
   void supabase.auth.getSession().then(({ data }) => void onSession(data.session));
   supabase.auth.onAuthStateChange((_evt, session) => void onSession(session));
-  // resync when the tab comes back and periodically as a safety net
+  // resync when the tab comes back and periodically as a safety net.
+  // The poll runs every 20s until a realtime event has actually been seen
+  // (then it relaxes to 60s) - devices must feel in-sync even when the
+  // realtime fast lane is not delivering.
   window.addEventListener('focus', () => void syncNow());
   window.addEventListener('online', () => void syncNow());
-  window.setInterval(() => void syncNow(), 60_000);
+  let tick = 0;
+  window.setInterval(() => {
+    tick += 1;
+    if (!isRealtimeDelivering() || tick % 3 === 0) void syncNow();
+  }, 20_000);
   // ...and when the app is being put away: entries typed right before
   // closing the phone app must leave the device, not wait for next open.
   // Coming BACK is just as important: iOS PWAs resume with a
