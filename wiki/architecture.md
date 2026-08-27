@@ -74,7 +74,10 @@ Remote applies wrap in `withRemote()` so they don't re-enter the outbox.
 - Server schema: `id text primary key`; RLS = owner OR accepted member of the
   row's list (plain owner for prefs). Row ids must therefore be globally
   unique - the Pool's id is `pool-<userId>` (see data-model.md), prefs ids
-  are `<userId>:<itemId>`.
+  are `<userId>:<itemId>`. **item_prefs additionally carries `item_id` as a
+  NOT NULL COLUMN** (not just inside data) - every prefs push must send it
+  (pushOutbox does; /api/selftest enforces the contract after a live bug
+  where omitting it stalled the whole prefs outbox).
 
 ## Auth (`auth.ts`)
 Magic link (`signInWithOtp`). Google OAuth code exists but the provider is

@@ -359,7 +359,17 @@ export const useSeder = create<SederState>((set, get) => {
 
   async reloadFromDb() {
     const fresh = await loadAll();
-    set({ items: fresh.items, categories: fresh.categories, prefs: fresh.prefs, shares: fresh.shares });
+    // recovery re-read too: the account-switch snapshot is written AFTER
+    // init (session resolves late), and its banner must not wait for a
+    // manual reload
+    const snap = loadRecovery();
+    set({
+      items: fresh.items,
+      categories: fresh.categories,
+      prefs: fresh.prefs,
+      shares: fresh.shares,
+      recovery: snap ? { exportedAt: snap.exportedAt, itemCount: snap.items.filter((i) => i.archivedAt === null).length } : null,
+    });
   },
 
   async restoreRecovery() {

@@ -141,6 +141,10 @@ export default function AccountMenu() {
                 </svg>
                 {t('sign_out')}
               </button>
+              {/* same stamp on both devices = both run the same version */}
+              <p className="account-sync-note" dir="ltr">
+                v {__SEDER_BUILD__}
+              </p>
             </>
           ) : (
             <>

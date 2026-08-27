@@ -146,6 +146,18 @@ export default async function handler(req, res) {
     { id: `${s2.uid}:${item}`, user_id: s2.uid, item_id: item, data: { today: true, urgent: true }, updated_at: now + 40, deleted: false },
   ]);
   step('B: member sets their own today/matrix flags', r.ok, r.text);
+
+  // CONTRACT (the bug of 2026-08-27): item_prefs carries item_id as a NOT
+  // NULL COLUMN, not just inside data. A row without it must be rejected -
+  // and the client (sync.ts pushOutbox) must always send it.
+  r = await u2('POST', 'item_prefs?on_conflict=id', [
+    { id: `${s2.uid}:contract-probe`, user_id: s2.uid, data: {}, updated_at: now + 41, deleted: false },
+  ]);
+  step(
+    'contract: prefs push WITHOUT item_id is rejected (not-null)',
+    !r.ok && /item_id|not-null/i.test(r.text),
+    r.ok ? 'unexpectedly accepted' : r.text,
+  );
   r = await u1('GET', `item_prefs?select=id&user_id=eq.${s2.uid}`);
   step('B: owner CANNOT read member triage', r.ok && (r.json?.length ?? 0) === 0, r.text);
 

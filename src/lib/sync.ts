@@ -21,7 +21,16 @@ import { supabase } from './supabase';
 import type { Category, Item, Share } from './types';
 
 type Table = 'items' | 'categories' | 'item_prefs';
-type Row = { id: string; user_id: string; data: Item | Category | ItemPrefs; updated_at: number; deleted: boolean };
+// item_id: the item_prefs TABLE carries it as a NOT NULL column (not just
+// inside data) - omitting it fails every prefs push. See wiki/architecture.md.
+type Row = {
+  id: string;
+  user_id: string;
+  data: Item | Category | ItemPrefs;
+  updated_at: number;
+  deleted: boolean;
+  item_id?: string;
+};
 type ShareRow = {
   id: string;
   list_id: string;
@@ -171,6 +180,8 @@ export async function pushOutbox(): Promise<void> {
             data: { id: e.rowId, ...(catId ? { categoryId: catId } : {}) } as any,
             updated_at: e.at,
             deleted: true,
+            // prefs row ids are '<userId>:<itemId>' - the table needs item_id
+            ...(table === 'prefs' ? { item_id: e.rowId.split(':').slice(1).join(':') } : {}),
           });
         } else {
           const data = await (table === 'items'
@@ -196,6 +207,7 @@ export async function pushOutbox(): Promise<void> {
             data: payload,
             updated_at: Math.max(updatedAtOf(data), e.at),
             deleted: false,
+            ...(table === 'prefs' ? { item_id: (data as ItemPrefs).itemId } : {}),
           });
         }
       }
