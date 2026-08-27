@@ -166,5 +166,45 @@ const item = {
   check('rekey: every item gets my prefs row', out.prefs.length === out.items.length && out.prefs.every((p) => p.id.startsWith('me:')));
 }
 
+// 9. Markdown import parser (mdImport.ts) - the two dialects
+{
+  const { parseMarkdownTasks, countMdTasks } = await import(join(dirname(self), '../src/lib/mdImport.ts'));
+  // paragraph-block dialect (the user's real file shape, synthetic content)
+  const paragraphMd = [
+    'משימות לפני המעבר - 1.1.2027',
+    '',
+    '# רשימה א',
+    '',
+    'משימה ראשונה',
+    'הסבר על המשימה הראשונה.',
+    'שורה שנייה של ההסבר.',
+    '',
+    'משימה שנייה בלי הערות',
+    '',
+    '# רשימה ב',
+    '',
+    'משימה שלישית',
+    'עם הערה.',
+  ].join('\n');
+  const p = parseMarkdownTasks(paragraphMd);
+  check('md: two lists parsed', p.length === 2 && p[0].name === 'רשימה א' && p[1].name === 'רשימה ב');
+  check('md: lone title line before headings is not a task', countMdTasks(p) === 3);
+  check('md: block first line is the title', p[0].items[0].title === 'משימה ראשונה');
+  check('md: block rest becomes notes', p[0].items[0].notes === 'הסבר על המשימה הראשונה.\nשורה שנייה של ההסבר.');
+  check('md: title-only block has empty notes', p[0].items[1].notes === '');
+
+  // bullet dialect with checkboxes and sub-items
+  const bulletMd = ['# קניות', '- [ ] חלב', '- [x] לחם', '  - תת משימה', '- גבינה'].join('\n');
+  const b = parseMarkdownTasks(bulletMd);
+  check('md: bullets become items', b[0].items.length === 3);
+  check('md: [x] marks done', b[0].items[1].done === true && b[0].items[0].done === false);
+  check('md: indented bullet is a sub-item of the previous bullet', b[0].items[1].children[0]?.title === 'תת משימה');
+
+  // preamble bullets (no heading) land in the headingless list -> the Pool
+  const noHeading = parseMarkdownTasks('- ראשון\n- שני');
+  check('md: bullets without a heading form a Pool-bound list', noHeading.length === 1 && noHeading[0].name === null && noHeading[0].items.length === 2);
+  check('md: empty text imports nothing', parseMarkdownTasks('\n\n').length === 0);
+}
+
 console.log(failures === 0 ? '\nALL SPLIT CHECKS PASSED' : `\n${failures} failure(s)`);
 process.exit(failures === 0 ? 0 : 1);

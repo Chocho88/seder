@@ -104,7 +104,7 @@ const SIZES = ['s', 'm', 'l'] as const;
 const THEMES: ThemeMode[] = ['light', 'dark', 'system'];
 
 export default function SettingsMenu() {
-  const { cardStyle, setCardStyle, setLogbookOpen } = useSeder();
+  const { cardStyle, setCardStyle, setLogbookOpen, importMarkdownText } = useSeder();
   useLang(); // re-render on language switch
   const [open, setOpen] = useState(false);
   const [themeMode, setThemeMode] = useState<ThemeMode>(getThemeMode);
@@ -112,6 +112,12 @@ export default function SettingsMenu() {
   const [colored, setColored] = useState(() => document.documentElement.getAttribute('data-colored') !== 'off');
   const ref = useRef<HTMLDivElement>(null);
   const importRef = useRef<HTMLInputElement>(null);
+  const mdRef = useRef<HTMLInputElement>(null);
+
+  const importMd = async (file: File) => {
+    await importMarkdownText(await file.text());
+    setOpen(false);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -265,6 +271,12 @@ export default function SettingsMenu() {
             </svg>
             {t('import_data')}
           </button>
+          <button className="settings-action pressable" onClick={() => mdRef.current?.click()}>
+            <svg className="icon icon-sm">
+              <use href={`${icons}#icon-copy`} />
+            </svg>
+            {t('import_md')}
+          </button>
           <button className="settings-action pressable" onClick={resetLayout}>
             <svg className="icon icon-sm">
               <use href={`${icons}#icon-menu`} />
@@ -279,6 +291,18 @@ export default function SettingsMenu() {
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) void importBackup(f);
+            }}
+          />
+          <input
+            ref={mdRef}
+            type="file"
+            accept=".md,.markdown,.txt,text/markdown,text/plain"
+            style={{ display: 'none' }}
+            data-testid="md-import-input"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void importMd(f);
+              e.target.value = '';
             }}
           />
         </div>

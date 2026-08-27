@@ -9,9 +9,10 @@
 import { create } from 'zustand';
 import { db, uid, ownerId, ensurePrefs } from './db';
 import { seedIfEmpty } from './seed';
-import { t } from './i18n';
+import { t, tfmt } from './i18n';
 import { onRemote, onConflict, onSyncError, shareToRow, isMissingTableError, beaconBoot } from './sync';
 import { startSelfUpdate } from './update';
+import { parseMarkdownTasks } from './mdImport';
 import { supabase } from './supabase';
 import {
   composeItem,
@@ -140,6 +141,10 @@ interface SederState {
   recovery: { exportedAt: number; itemCount: number } | null;
   restoreRecovery(): Promise<void>;
   dismissRecovery(): void;
+
+  /** Import a Markdown text: headings -> lists, blocks/bullets -> items.
+      Returns how many lists and tasks landed. */
+  importMarkdownText(text: string): Promise<{ lists: number; tasks: number }>;
 
   // --- item actions ---
   addItem(partial: Partial<Item> & Pick<Item, 'title' | 'categoryId'>): Promise<Item>;
@@ -407,6 +412,101 @@ export const useSeder = create<SederState>((set, get) => {
   dismissRecovery() {
     localStorage.removeItem(RECOVERY_KEY);
     set({ recovery: null });
+  },
+
+  async importMarkdownText(text) {
+    const parsed = parseMarkdownTasks(text);
+    if (parsed.length === 0) return { lists: 0, tasks: 0 };
+    const owner = await ownerId();
+    const now = Date.now();
+    const cats = get().categories;
+    const pool = cats.find((c) => c.system);
+    const byName = new Map(cats.filter((c) => !c.system).map((c) => [c.name.trim(), c]));
+    const newCats: Category[] = [];
+    const newItems: Item[] = [];
+    const newPrefs: ItemPrefs[] = [];
+    const touched = new Set<string>();
+    let newLists = 0;
+    const baseItem = (title: string, categoryId: string, parentId: string | null, order: number, done: boolean, notes: string): Item => ({
+      id: uid(),
+      title,
+      kind: 'task',
+      categoryId,
+      parentId,
+      order,
+      nextMove: '',
+      stateOverride: null,
+      done,
+      doneAt: done ? now : null,
+      archivedAt: null,
+      deletedAt: null,
+      important: null,
+      urgent: null,
+      today: false,
+      todaySince: null,
+      evening: false,
+      pinned: false,
+      due: null,
+      nudge: null,
+      notes,
+      links: [],
+      source: { kind: 'md-import', ref: '' },
+      tags: [],
+      createdAt: now,
+      updatedAt: now,
+    });
+    for (const listDef of parsed) {
+      // a heading matching an existing list merges into it; the headingless
+      // preamble goes to the Pool
+      let target: Category | undefined =
+        listDef.name === null ? pool : byName.get(listDef.name.trim());
+      if (!target && listDef.name !== null) {
+        target = {
+          id: uid(),
+          name: listDef.name.trim(),
+          colorKey: (['sage', 'clay', 'rose', 'slate', 'ochre', 'plum', 'teal', 'coral', 'mustard', 'fog'] as const)[
+            (cats.length + newCats.length) % 10
+          ],
+          order: cats.length + newCats.length,
+          archived: false,
+        };
+        newCats.push(target);
+        byName.set(target.name, target);
+        newLists += 1;
+      }
+      if (!target) continue;
+      if (listDef.items.length > 0) touched.add(target.id);
+      const startOrder = get().items.filter((i) => i.categoryId === target!.id && i.parentId === null).length;
+      listDef.items.forEach((md, n) => {
+        const parent = baseItem(md.title, target!.id, null, startOrder + n, md.done, md.notes);
+        newItems.push(parent);
+        newPrefs.push(prefsFromItem(owner, parent));
+        md.children.forEach((child, cn) => {
+          const sub = baseItem(child.title, target!.id, parent.id, cn, child.done, '');
+          newItems.push(sub);
+          newPrefs.push(prefsFromItem(owner, sub));
+        });
+      });
+    }
+    await db.transaction('rw', db.items, db.categories, db.prefs, async () => {
+      if (newCats.length) await db.categories.bulkAdd(newCats);
+      if (newItems.length) await db.items.bulkAdd(newItems);
+      if (newPrefs.length) await db.prefs.bulkPut(newPrefs);
+    });
+    await get().reloadFromDb();
+    set({
+      toast: {
+        label:
+          newItems.length === 0
+            ? t('toast_md_empty')
+            : tfmt('toast_md_imported', { n: String(newItems.length), m: String(touched.size) }),
+        at: Date.now(),
+        undoable: false,
+      },
+    });
+    const { syncNow } = await import('./sync');
+    void syncNow(); // ride straight up to the other devices
+    return { lists: newLists, tasks: newItems.length };
   },
 
   async addItem(partial) {
