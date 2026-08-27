@@ -76,9 +76,39 @@ export function onSyncError(cb: () => void): void {
   onSyncFailure = cb;
 }
 
+// Diagnostic heartbeat: whenever the sync state CHANGES (a new error, or a
+// recovery to clean), production builds report build+error+pending to
+// /api/beacon - readable in the deployment's runtime logs. Task content
+// never leaves the device through this path.
+let lastBeaconKey = '';
+function sendBeacon(error: string | null): void {
+  if (typeof location === 'undefined' || !/vercel\.app$/.test(location.hostname)) return;
+  const key = `${error ?? 'ok'}`;
+  if (key === lastBeaconKey) return;
+  lastBeaconKey = key;
+  void (async () => {
+    try {
+      const pending = await outbox.count();
+      await fetch('/api/beacon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          build: typeof __SEDER_BUILD__ !== 'undefined' ? __SEDER_BUILD__ : 'dev',
+          uid: session?.user.id ?? 'anon',
+          pending,
+          sharingReady,
+          error,
+        }),
+      });
+    } catch {}
+  })();
+}
+
 function noteFailure(detail: string): void {
   cycleFailed = true;
-  void meta.put({ key: 'lastSyncError', value: detail });
+  const stamped = `[${new Date().toTimeString().slice(0, 5)}] ${detail}`;
+  void meta.put({ key: 'lastSyncError', value: stamped });
+  sendBeacon(detail);
   if (!failureToasted) {
     failureToasted = true;
     onSyncFailure?.();
@@ -464,5 +494,6 @@ export async function syncNow(): Promise<void> {
     failureToasted = false; // a clean cycle re-arms the one-shot warning
     await meta.put({ key: 'lastSyncOk', value: Date.now() });
     await meta.delete('lastSyncError');
+    sendBeacon(null); // report recovery once, so the logs show the all-clear
   }
 }
