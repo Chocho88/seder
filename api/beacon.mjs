@@ -10,8 +10,10 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body ?? {});
     const line = {
       t: new Date().toISOString(),
+      event: String(body.event ?? 'sync').slice(0, 12),
       build: String(body.build ?? '?').slice(0, 40),
       uid: String(body.uid ?? '?').slice(0, 8),
+      signedIn: body.signedIn,
       pending: Number(body.pending ?? -1),
       sharingReady: body.sharingReady,
       error: body.error == null ? null : String(body.error).slice(0, 400),

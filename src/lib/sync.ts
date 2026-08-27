@@ -81,9 +81,9 @@ export function onSyncError(cb: () => void): void {
 // /api/beacon - readable in the deployment's runtime logs. Task content
 // never leaves the device through this path.
 let lastBeaconKey = '';
-function sendBeacon(error: string | null): void {
+function sendBeacon(error: string | null, event = 'sync'): void {
   if (typeof location === 'undefined' || !/vercel\.app$/.test(location.hostname)) return;
-  const key = `${error ?? 'ok'}`;
+  const key = `${event}:${error ?? 'ok'}`;
   if (key === lastBeaconKey) return;
   lastBeaconKey = key;
   void (async () => {
@@ -93,8 +93,10 @@ function sendBeacon(error: string | null): void {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          event,
           build: typeof __SEDER_BUILD__ !== 'undefined' ? __SEDER_BUILD__ : 'dev',
           uid: session?.user.id ?? 'anon',
+          signedIn: session !== null,
           pending,
           sharingReady,
           error,
@@ -102,6 +104,14 @@ function sendBeacon(error: string | null): void {
       });
     } catch {}
   })();
+}
+
+/** Every page load announces itself once - signed-in OR NOT. A signed-out
+    load was previously invisible (sync never runs without a session), and
+    invisible is indistinguishable from "never opened the app". */
+export async function beaconBoot(): Promise<void> {
+  const lastError = ((await meta.get('lastSyncError'))?.value as string | undefined) ?? null;
+  sendBeacon(lastError, 'boot');
 }
 
 function noteFailure(detail: string): void {

@@ -10,7 +10,7 @@ import { create } from 'zustand';
 import { db, uid, ownerId, ensurePrefs } from './db';
 import { seedIfEmpty } from './seed';
 import { t } from './i18n';
-import { onRemote, onConflict, onSyncError, shareToRow, isMissingTableError } from './sync';
+import { onRemote, onConflict, onSyncError, shareToRow, isMissingTableError, beaconBoot } from './sync';
 import { supabase } from './supabase';
 import {
   composeItem,
@@ -355,6 +355,9 @@ export const useSeder = create<SederState>((set, get) => {
     void navigator.storage?.persist?.().then((granted) => {
       void db.meta.put({ key: 'storagePersisted', value: granted });
     });
+    // every production load announces itself (~4s in, once the session
+    // has had time to resolve) - see beaconBoot in sync.ts
+    window.setTimeout(() => void beaconBoot(), 4000);
   },
 
   async reloadFromDb() {
