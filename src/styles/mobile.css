@@ -23,7 +23,28 @@
 
   .seder-main {
     /* room for the floating bottom bar */
-    padding-block-end: calc(96px + env(safe-area-inset-bottom, 0px));
+    padding-block-end: calc(120px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Phone cards are as tall as their content, never a desktop-dragged
+     height - a one-task list must not own a screenful of empty wash */
+  .mobile-canvas .bento-inner {
+    height: auto !important;
+  }
+
+  /* Row and header controls whisper on touch (they are always-visible
+     here, so their weight IS the noise): quieter until pressed */
+  .mobile-canvas .item-more {
+    opacity: 0.4;
+  }
+  .mobile-canvas .item-more:active {
+    opacity: 1;
+  }
+  .mobile-canvas .category-card-tools .item-action {
+    opacity: 0.55;
+  }
+  .mobile-canvas .category-card-tools .item-action:active {
+    opacity: 1;
   }
 
   /* --- Mobile home: the same sections as desktop, one column --- */

@@ -116,6 +116,9 @@ body {
   color: var(--text-primary);
   font-family: var(--font-body);
   margin: 0;
+  /* crisp ink, not heavy subpixel smudge - the Things-like rendering */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 #root {
   min-height: 100%;
