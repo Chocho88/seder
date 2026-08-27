@@ -22,14 +22,26 @@
   }
 
   .seder-main {
-    /* room for the floating bottom bar */
-    padding-block-end: calc(120px + env(safe-area-inset-bottom, 0px));
+    /* room for the floating bottom bar AND Safari's collapsed URL chip -
+       the last rows must never hide behind them */
+    padding-block-end: calc(170px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* Phone cards are as tall as their content, never a desktop-dragged
-     height - a one-task list must not own a screenful of empty wash */
+  /* Phone cards are as tall as their content, never a desktop-dragged or
+     grid-measured height. The desktop packs cards into a measured 8px grid;
+     any mismatch there CROPS a card's tail (the add-item field) on the
+     phone - so the phone opts out entirely: one simple stacked column. */
+  .mobile-canvas .board-bento {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .mobile-canvas .bento-item,
   .mobile-canvas .bento-inner {
     height: auto !important;
+  }
+  .mobile-canvas .bento-fixed .category-card-body {
+    overflow-y: visible; /* the page scrolls; cards never scroll inside it */
   }
 
   /* Row and header controls whisper on touch (they are always-visible
