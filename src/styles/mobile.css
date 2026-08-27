@@ -240,3 +240,17 @@
     display: none;
   }
 }
+
+@media (max-width: 768px) {
+  /* iOS Safari zooms the whole page in when a focused text field renders
+     below 16px, and never zooms back out on blur - the screen is left
+     unstable ("no zoom" bug). Every text-entry surface gets a 16px floor. */
+  input[type='text'],
+  input[type='email'],
+  input[type='search'],
+  input[type='date'],
+  input:not([type]),
+  textarea {
+    font-size: 16px !important;
+  }
+}

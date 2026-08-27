@@ -2,9 +2,13 @@
 // whiteboard: a matrix side and a lists side. Every section is a block the
 // user can toggle (settings) and drag into any order (section handle).
 // The split between the sides drags; the matrix pulls taller by its lip.
-// Sections that live before 'lists' render on the matrix side; 'lists' and
-// anything after it render on the lists side - so dragging Pinned above
-// Lists keeps it on the lists side, dragging it above Matrix moves it left.
+//
+// Side membership is FIXED (MATRIX_SIDE below), not derived from array
+// position: date/today/suggestions/matrix/evening/done/pinned always live
+// left, lists always lives right. Dragging a section's order (Settings >
+// Sections) only reorders it within its own side. Position used to decide
+// the side too - dragging 'lists' above 'matrix' left the matrix side
+// empty and dumped everything onto one side, wasting half the screen.
 
 import { useRef, useState } from 'react';
 import { useSeder } from '../lib/store';
@@ -15,6 +19,7 @@ import './canvas.css';
 
 const SPLIT_KEY = 'seder-split';
 const ROWMIN_KEY = 'seder-matrix-rowmin';
+const MATRIX_SIDE = new Set(['date', 'today', 'suggestions', 'matrix', 'evening', 'done', 'pinned']);
 
 export default function Canvas() {
   const { sections } = useSeder();
@@ -66,9 +71,8 @@ export default function Canvas() {
   );
 
   const on = sections.filter((s) => s.on);
-  const listsIdx = on.findIndex((s) => s.id === 'lists');
-  const leftSide = listsIdx === -1 ? on : on.slice(0, listsIdx);
-  const rightSide = listsIdx === -1 ? [] : on.slice(listsIdx);
+  const leftSide = on.filter((s) => MATRIX_SIDE.has(s.id));
+  const rightSide = on.filter((s) => !MATRIX_SIDE.has(s.id));
 
   return (
     <div ref={canvasRef} className="canvas" style={{ ['--split' as string]: `${split}%` }}>
