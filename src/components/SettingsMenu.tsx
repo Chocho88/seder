@@ -4,7 +4,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import icons from '../../vendor/design-system/icons.svg';
-import { db } from '../lib/db';
+import { db, uid } from '../lib/db';
+import { rekeySnapshot } from '../lib/shareSplit';
 import { useSeder } from '../lib/store';
 import { setFontSize, setColoredLists, getThemeMode, applyThemeMode, type ThemeMode } from '../lib/urlState';
 import { t, useLang } from '../lib/i18n';
@@ -136,11 +137,23 @@ export default function SettingsMenu() {
   const importBackup = async (file: File) => {
     const data = JSON.parse(await file.text());
     if (!data?.seder || !Array.isArray(data.items) || !Array.isArray(data.categories)) return;
-    await db.transaction('rw', db.items, db.categories, async () => {
+    // Imports are RE-KEYED: a backup may come from another account (or a
+    // pre-account-switch life), and its original row ids exist server-side
+    // under that account - pushing them would be rejected by RLS forever.
+    // Fresh ids make the imported rows unambiguously OURS.
+    const owner = ((await db.meta.get('owner'))?.value as string | undefined) ?? 'local';
+    const poolId = owner === 'local' ? 'pool-local' : `pool-${owner}`;
+    const { categories, items, prefs } = rekeySnapshot(data, { poolId, ownerId: owner, nextOrder: 0, newId: uid });
+    await db.transaction('rw', db.items, db.categories, db.prefs, async () => {
       await db.items.clear();
       await db.categories.clear();
-      await db.categories.bulkAdd(data.categories);
-      await db.items.bulkAdd(data.items);
+      await db.prefs.clear();
+      await db.categories.bulkAdd([
+        { id: poolId, name: 'Pool', colorKey: 'fog', order: -1, archived: false, system: true },
+        ...categories,
+      ]);
+      await db.items.bulkAdd(items);
+      await db.prefs.bulkAdd(prefs);
     });
     location.reload();
   };

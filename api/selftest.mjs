@@ -167,6 +167,18 @@ export default async function handler(req, res) {
   r = await u2('GET', `items?select=id&data->>categoryId=eq.${cat}`);
   step('B: revoke cut member access immediately', r.ok && (r.json?.length ?? 0) === 0, r.text);
 
+  // CONTRACT (the bug of 2026-08-27, part 2): pushing a row whose id exists
+  // under ANOTHER account must be rejected with an RLS/ownership error -
+  // the client detects exactly this and re-keys the row (self-healing).
+  r = await u2('POST', 'categories?on_conflict=id', [
+    { id: cat, user_id: s2.uid, data: { id: cat, name: 'steal attempt' }, updated_at: now + 60, deleted: false },
+  ]);
+  step(
+    'contract: pushing a foreign row id is rejected (ownership)',
+    !r.ok && /row-level security|duplicate key/i.test(r.text),
+    r.ok ? 'unexpectedly accepted' : r.text,
+  );
+
   // ---------- cleanup (own rows only; delete policies are owner-only) ----------
   for (const [who, path] of [
     [u1, `items?id=eq.${item}`],

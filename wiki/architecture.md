@@ -77,7 +77,11 @@ Remote applies wrap in `withRemote()` so they don't re-enter the outbox.
   are `<userId>:<itemId>`. **item_prefs additionally carries `item_id` as a
   NOT NULL COLUMN** (not just inside data) - every prefs push must send it
   (pushOutbox does; /api/selftest enforces the contract after a live bug
-  where omitting it stalled the whole prefs outbox).
+  where omitting it stalled the whole prefs outbox). A push rejected as an
+  OWNERSHIP error (RLS/duplicate-key: the id exists under another account,
+  e.g. an old-id backup import) self-heals: the row is re-keyed locally to
+  a fresh id of our own and re-pushed (healForeignRow); imports re-key up
+  front (SettingsMenu.importBackup -> rekeySnapshot).
 
 ## Auth (`auth.ts`)
 Magic link (`signInWithOtp`). Google OAuth code exists but the provider is

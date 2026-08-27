@@ -15,8 +15,8 @@
 //     from this device.
 
 import type { RealtimeChannel, Session } from '@supabase/supabase-js';
-import { db, outbox, meta, withRemote, type OutboxTable } from './db';
-import { isMissingTableError, neutralizeShared, type ItemPrefs } from './shareSplit';
+import { db, outbox, meta, withRemote, uid, type OutboxTable } from './db';
+import { isMissingTableError, neutralizeShared, prefsFromItem, type ItemPrefs } from './shareSplit';
 import { supabase } from './supabase';
 import type { Category, Item, Share } from './types';
 
@@ -180,6 +180,46 @@ async function sharedListOwners(): Promise<Map<string, string>> {
 
 const serverTable = (t: OutboxTable): Table => (t === 'prefs' ? 'item_prefs' : t);
 
+/** The server said "that row id belongs to someone else": an upsert of an
+    id that exists under ANOTHER account (no share) hits the update path
+    and RLS rejects it, or the insert path trips the primary key. Happens
+    when old-id data re-enters a new account (e.g. a backup imported after
+    an account switch, before imports re-keyed). */
+function isOwnershipError(err: { code?: string; message?: string } | null | undefined): boolean {
+  if (!err) return false;
+  const msg = err.message ?? '';
+  return /row-level security/i.test(msg) || /duplicate key value/i.test(msg) || err.code === '42501' || err.code === '23505';
+}
+
+/** Give a local row a fresh identity of OUR OWN: new id, links remapped,
+    the old row removed WITHOUT a tombstone (it was never ours to delete
+    server-side). The Dexie hooks queue the new rows for the next push. */
+async function healForeignRow(table: 'items' | 'categories', oldId: string): Promise<boolean> {
+  const owner = session?.user.id ?? 'local';
+  if (table === 'categories') {
+    const cat = await db.categories.get(oldId);
+    if (!cat || cat.system) return false; // the Pool is per-user; never re-key it
+    const newId = uid();
+    await db.categories.put({ ...cat, id: newId });
+    await db.items.where('categoryId').equals(oldId).modify({ categoryId: newId });
+    await withRemote(() => db.categories.delete(oldId));
+    console.warn('[sync] healed foreign category', oldId, '->', newId);
+    return true;
+  }
+  const it = await db.items.get(oldId);
+  if (!it) return false;
+  const newId = uid();
+  await db.items.put({ ...it, id: newId });
+  await db.items.where('parentId').equals(oldId).modify({ parentId: newId });
+  await db.prefs.put(prefsFromItem(owner, { ...it, id: newId }));
+  await withRemote(async () => {
+    await db.items.delete(oldId);
+    await db.prefs.delete(`${owner}:${oldId}`);
+  });
+  console.warn('[sync] healed foreign item', oldId, '->', newId);
+  return true;
+}
+
 /** Push every outbox entry to the server, newest state per row. */
 export async function pushOutbox(): Promise<void> {
   if (!supabase || !session || pushing) return;
@@ -251,10 +291,31 @@ export async function pushOutbox(): Promise<void> {
           // the sharing migration has not been applied - keep the entries
           // for the day it is, but this is NOT a sync failure
           markSharing(false);
-        } else {
-          console.warn('[sync] push failed', table, error.message);
-          noteFailure(`push ${serverTable(table)}: ${error.message}`);
+          continue;
         }
+        if ((table === 'items' || table === 'categories') && isOwnershipError(error)) {
+          // some row id in this batch belongs to another account (old-id
+          // data that re-entered this one). Find the offenders one by one
+          // and give them a fresh identity of our own - self-healing.
+          let healed = 0;
+          for (const row of rows) {
+            const single = await supabase.from(serverTable(table)).upsert([row], { onConflict: 'id' });
+            if (single.error && isOwnershipError(single.error)) {
+              if (await healForeignRow(table, row.id)) healed += 1;
+            } else if (single.error) {
+              console.warn('[sync] push failed', table, row.id, single.error.message);
+              noteFailure(`push ${serverTable(table)}: ${single.error.message}`);
+            }
+          }
+          await outbox.bulkDelete(tableSeqs); // healed rows re-queue under their new ids
+          if (healed) {
+            console.warn(`[sync] healed ${healed} foreign ${table} row(s)`);
+            onRemoteChange?.(); // ids changed under the UI - reload state
+          }
+          continue;
+        }
+        console.warn('[sync] push failed', table, error.message);
+        noteFailure(`push ${serverTable(table)}: ${error.message}`);
         continue; // this table retries later; the others still drain
       }
       if (table === 'prefs') markSharing(true);
