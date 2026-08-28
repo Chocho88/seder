@@ -308,20 +308,36 @@ export async function pushOutbox(): Promise<void> {
           // data that re-entered this one). Find the offenders one by one
           // and give them a fresh identity of our own - self-healing.
           let healed = 0;
+          let stuck = 0;
           for (const row of rows) {
             const single = await supabase.from(serverTable(table)).upsert([row], { onConflict: 'id' });
             if (single.error && isOwnershipError(single.error)) {
-              if (await healForeignRow(table, row.id)) healed += 1;
+              try {
+                if (await healForeignRow(table, row.id)) {
+                  healed += 1;
+                } else {
+                  // healForeignRow declined (row already gone, or it's the
+                  // system Pool) - this entry cannot heal itself; drop the
+                  // stale outbox slice for THIS row only, do not spin on it
+                  stuck += 1;
+                  noteFailure(`push ${serverTable(table)} ${row.id}: ownership conflict, could not self-heal (${single.error.message})`);
+                }
+              } catch (healErr) {
+                // never let a heal bug silently break the whole sync cycle
+                stuck += 1;
+                noteFailure(`heal ${serverTable(table)} ${row.id} threw: ${String(healErr).slice(0, 200)}`);
+              }
             } else if (single.error) {
               console.warn('[sync] push failed', table, row.id, single.error.message);
               noteFailure(`push ${serverTable(table)}: ${single.error.message}`);
             }
           }
-          await outbox.bulkDelete(tableSeqs); // healed rows re-queue under their new ids
+          await outbox.bulkDelete(tableSeqs); // healed/stuck rows re-queue or are dropped, never retried verbatim
           if (healed) {
             console.warn(`[sync] healed ${healed} foreign ${table} row(s)`);
             onRemoteChange?.(); // ids changed under the UI - reload state
           }
+          if (stuck) cycleFailed = true; // surfaced via noteFailure above; do not silently call this cycle clean
           continue;
         }
         console.warn('[sync] push failed', table, error.message);
