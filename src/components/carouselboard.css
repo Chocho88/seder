@@ -1,0 +1,104 @@
+/* Carousel: one big list at a time, native horizontal scroll-snap - real
+   touch scrolling (momentum, gesture arbitration) for free, no hand-rolled
+   gesture code. */
+.carousel-wrap {
+  position: relative;
+}
+.carousel-track {
+  display: flex;
+  align-items: flex-start; /* NOT stretch - a short list must not be
+    ballooned to a near-empty card the height of its tallest neighbor */
+  gap: var(--space-5);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 5%;
+  padding-block-end: var(--space-3);
+  /* the scrollbar is the drag-to-resize grip's replacement here; keep it
+     out of the calm reading path but not hidden (still a real scroll) */
+  scrollbar-width: thin;
+}
+.carousel-slide {
+  flex: 0 0 90%;
+  max-width: 640px;
+  scroll-snap-align: center;
+  min-width: 0;
+}
+.carousel-slide-ghost {
+  display: flex;
+  align-items: flex-start;
+}
+
+.carousel-arrow {
+  position: absolute;
+  top: 40%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  background: var(--surface-card);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.1));
+}
+.carousel-arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.carousel-arrow-prev {
+  inset-inline-start: -4px;
+}
+.carousel-arrow-next {
+  inset-inline-end: -4px;
+}
+/* the glyphs are drawn for RTL (the app's default); flip them for LTR -
+   same pattern as .logbook-restore .icon */
+[dir='ltr'] .carousel-arrow .icon {
+  transform: scaleX(-1);
+}
+
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  padding-block-start: var(--space-2);
+}
+.carousel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: var(--border-color);
+  padding: 0;
+  cursor: pointer;
+}
+.carousel-dot.on {
+  background: var(--color-accent);
+  width: 16px;
+  border-radius: var(--radius-full);
+}
+
+@media (max-width: 768px) {
+  .carousel-slide {
+    flex-basis: 88%;
+  }
+  .carousel-arrow {
+    display: none; /* swipe is the whole point on phone */
+  }
+}
+
+/* Rows normally lock touch panning to vertical only (touch-action: pan-y -
+   see itemrow.css) so a touch-start on a row still scrolls the PAGE and
+   never fights the row's own long-press-to-pick-up gesture. Inside a
+   carousel slide there is a second legitimate scroller - the horizontal
+   track - so rows here allow both axes; the browser's own gesture
+   disambiguation hands the touch to whichever ancestor scroller matches
+   the drag direction (this does not affect the long-press pickup, which
+   is a JS timer unrelated to touch-action). Scoped to .carousel-slide
+   only - bento/gallery rows are unaffected. */
+.carousel-slide .item-row {
+  touch-action: pan-x pan-y;
+}

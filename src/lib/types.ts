@@ -107,6 +107,10 @@ export interface Share {
 // UI-level types
 export type ViewId = 'today' | 'board' | 'matrix' | 'all';
 export type CardStyle = 'mono' | 'tint' | 'header';
+/** How the lists pane renders: today's resizable grid, a dense Keep-style
+    masonry, or one big list at a time (swipe to the next). Matrix keeps
+    its own permanent spot regardless - this only affects the lists side. */
+export type ListView = 'bento' | 'gallery' | 'carousel';
 
 /** Canvas sections: each is a draggable, toggleable block. */
 export type SectionId = 'date' | 'today' | 'suggestions' | 'pinned' | 'matrix' | 'evening' | 'done' | 'lists';

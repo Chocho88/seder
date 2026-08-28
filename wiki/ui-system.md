@@ -36,6 +36,33 @@ rows in `.card-slot` drop targets (insertion line), a `.card-endzone` while
 dragging (drop at end), labeled done separator, inline add. Card body has
 `overflow-x: clip` - nothing may poke past the frame (geometry test).
 
+### Lists view switcher (`Board.tsx` dispatches to `BentoBoard` /
+`GalleryBoard` / `CarouselBoard.tsx`)
+Three ways to browse the SAME lists, click/tap to switch (not gesture -
+swipe is reserved for inside Carousel, where it is the point); persisted
+like `cardStyle` (`listView` in the store, `?listview=` URL-addressable).
+The Matrix keeps its own permanent spot regardless of this switch - it
+only changes the lists pane.
+- **Bento** (default): today's resizable grid, unchanged.
+- **Gallery**: real CSS multi-column masonry, natural height, no resize -
+  for scanning many lists at once. The column count reacts to `.board`'s
+  own width via **container queries**, not viewport media queries - the
+  lists pane is usually far narrower than the viewport (desktop's split),
+  and a viewport breakpoint once crammed 4 columns into a ~700px pane and
+  crushed every title to a few letters.
+- **Carousel**: one big list at a time - "like an Instagram carousel"
+  (the user's phrase). Native `scroll-snap-type: x`, not hand-rolled
+  gesture code - real touch scrolling, iOS momentum and gesture
+  arbitration for free. Landing slide skips a leading Pool (system list)
+  since it's usually near-empty; `align-items: flex-start` on the track
+  so a short list is never stretched to its tallest neighbor's height.
+  Desktop gets click arrows + dot indicators; RTL-correct via the same
+  "draw for RTL, flip under `[dir='ltr']`" pattern as the logbook restore
+  icon. Rows normally lock `touch-action: pan-y` (itemrow.css) so a touch
+  on a row still scrolls the page - inside a carousel slide specifically
+  that's widened to `pan-x pan-y` so the same touch-start can also reach
+  the horizontal track; scoped to `.carousel-slide .item-row` only.
+
 ## Matrix (`MatrixView.tsx`)
 Two hairline axes inside one card frame; classic labels; quadrants are drop
 targets (`data-drop="q:u-i"` etc.), rows inside are `.matrix-slot` drop

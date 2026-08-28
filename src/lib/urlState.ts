@@ -2,7 +2,7 @@
 // screenshotted) via a URL: ?view=board&lang=he&theme=dark&cardstyle=tint&detail=panel&open=<id>
 // URL params override localStorage; they also persist so a reload keeps them.
 
-import type { CardStyle, DetailMode, Lang, Theme, ViewId } from './types';
+import type { CardStyle, DetailMode, Lang, ListView, Theme, ViewId } from './types';
 
 const KEYS = {
   view: 'seder-view',
@@ -12,6 +12,7 @@ const KEYS = {
   lang: 'klod-lang',
   fontsize: 'seder-fontsize',
   colored: 'seder-colored',
+  listview: 'seder-listview',
 } as const;
 
 function applyOverridesNow(): void {
@@ -93,6 +94,15 @@ export function initialCardStyle(): CardStyle {
 export function persistCardStyle(style: CardStyle): void {
   localStorage.setItem(KEYS.cardstyle, style);
   document.documentElement.setAttribute('data-cardstyle', style);
+}
+
+export function initialListView(): ListView {
+  const v = localStorage.getItem(KEYS.listview);
+  return v === 'gallery' || v === 'carousel' ? v : 'bento';
+}
+
+export function persistListView(view: ListView): void {
+  localStorage.setItem(KEYS.listview, view);
 }
 
 export function initialDetailMode(): DetailMode {

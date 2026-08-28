@@ -29,6 +29,43 @@ export function GoogleIcon({ className = 'icon' }: { className?: string }) {
   );
 }
 
+/** Bento: uneven blocks, like the resizable grid it represents. */
+export function BentoIcon({ className = 'icon' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="3" width="8" height="8" rx="1.5" />
+      <rect x="13" y="3" width="8" height="5" rx="1.5" />
+      <rect x="13" y="10" width="8" height="11" rx="1.5" />
+      <rect x="3" y="13" width="8" height="8" rx="1.5" />
+    </svg>
+  );
+}
+
+/** Gallery: a dense masonry of columns, uneven heights. */
+export function GalleryIcon({ className = 'icon' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="3" width="5.5" height="10" rx="1.2" />
+      <rect x="3" y="15" width="5.5" height="6" rx="1.2" />
+      <rect x="9.25" y="3" width="5.5" height="6" rx="1.2" />
+      <rect x="9.25" y="11" width="5.5" height="10" rx="1.2" />
+      <rect x="15.5" y="3" width="5.5" height="13" rx="1.2" />
+      <rect x="15.5" y="18" width="5.5" height="3" rx="1.2" />
+    </svg>
+  );
+}
+
+/** Carousel: one card up front, the next peeking from behind. */
+export function CarouselIcon({ className = 'icon' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="2" y="5" width="4" height="14" rx="1.2" opacity="0.5" />
+      <rect x="7" y="3" width="12" height="18" rx="1.6" />
+      <rect x="20" y="5" width="4" height="14" rx="1.2" opacity="0.5" />
+    </svg>
+  );
+}
+
 export function UsersIcon({ className = 'icon' }: { className?: string }) {
   return (
     <svg

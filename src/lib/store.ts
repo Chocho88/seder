@@ -28,6 +28,7 @@ import {
   type Category,
   type DetailMode,
   type Item,
+  type ListView,
   type SectionId,
   type SectionPref,
   type Share,
@@ -93,10 +94,12 @@ function saveListOverlay(listId: string, patch: ListOverlay): void {
 import {
   initialCardStyle,
   initialDetailMode,
+  initialListView,
   initialOpenItem,
   initialView,
   persistCardStyle,
   persistDetailMode,
+  persistListView,
   persistView,
   wantsFreshSeed,
 } from './urlState';
@@ -110,6 +113,7 @@ interface SederState {
 
   view: ViewId;
   cardStyle: CardStyle;
+  listView: ListView; // how the lists pane renders: bento / gallery / carousel
   detailMode: DetailMode;
   openItemId: string | null; // detail panel target
   captureOpen: boolean; // omni-bar (Cmd+K)
@@ -171,6 +175,7 @@ interface SederState {
   // --- ui actions ---
   setView(view: ViewId): void;
   setCardStyle(style: CardStyle): void;
+  setListView(view: ListView): void;
   setDetailMode(mode: DetailMode): void;
   openItem(id: string | null): void;
   setCaptureOpen(open: boolean, dictate?: boolean): void;
@@ -299,6 +304,7 @@ export const useSeder = create<SederState>((set, get) => {
   shares: [],
   view: initialView(),
   cardStyle: initialCardStyle(),
+  listView: initialListView(),
   detailMode: initialDetailMode(),
   openItemId: null,
   captureOpen: false,
@@ -784,6 +790,10 @@ export const useSeder = create<SederState>((set, get) => {
   setCardStyle(style) {
     persistCardStyle(style);
     set({ cardStyle: style });
+  },
+  setListView(view) {
+    persistListView(view);
+    set({ listView: view });
   },
   setDetailMode(mode) {
     persistDetailMode(mode);

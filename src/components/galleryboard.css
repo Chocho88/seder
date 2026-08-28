@@ -1,0 +1,31 @@
+/* Gallery: real CSS multi-column masonry - no measuring code, the browser
+   packs cards by height automatically, Keep-style.
+   Container queries, not viewport media queries: the lists pane is often
+   only ~40-55% of the viewport (desktop's matrix+lists split), so a
+   viewport-width breakpoint packed 4 columns into a ~700px pane and
+   crushed every title to a few letters. .board is the query container
+   (container-type set in board.css); .board-gallery reacts to ITS actual
+   width. */
+.board-gallery {
+  column-count: 1;
+  column-gap: var(--space-5);
+}
+@container (min-width: 420px) {
+  .board-gallery {
+    column-count: 2;
+  }
+}
+@container (min-width: 720px) {
+  .board-gallery {
+    column-count: 3;
+  }
+}
+@container (min-width: 1020px) {
+  .board-gallery {
+    column-count: 4;
+  }
+}
+.gallery-item {
+  break-inside: avoid;
+  margin-bottom: var(--space-5);
+}

@@ -136,6 +136,12 @@ const DICT: Record<string, { en: string; he: string }> = {
   // the Today shelf
   section_today: { en: 'Today', he: 'היום' },
   today_shelf_empty: { en: 'Drop a task here for today', he: 'גררו לכאן משימה להיום' },
+  // lists view switcher
+  view_bento: { en: 'Bento', he: 'בנטו' },
+  view_gallery: { en: 'Gallery', he: 'גלריה' },
+  view_carousel: { en: 'Carousel', he: 'קרוסלה' },
+  carousel_prev: { en: 'Previous list', he: 'הרשימה הקודמת' },
+  carousel_next: { en: 'Next list', he: 'הרשימה הבאה' },
   // sync diagnostics
   sharing_not_installed: { en: 'Sharing is not set up on the server yet (the SQL file was not run). Lists and tasks still sync.', he: 'השיתוף עוד לא הותקן בשרת (קובץ ה-SQL לא הורץ). רשימות ומשימות ממשיכות להסתנכרן.' },
   sync_error_detail: { en: 'Last error', he: 'שגיאה אחרונה' },

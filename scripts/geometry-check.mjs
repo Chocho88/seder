@@ -8,6 +8,11 @@ const cases = [
   { name: 'desktop-en', vw: 1440, q: 'lang=en&theme=light&seed=fresh' },
   { name: 'narrow-he', vw: 1024, q: 'lang=he&theme=light&seed=fresh' },
   { name: 'phone-he', vw: 390, q: 'lang=he&theme=light&seed=fresh', mobile: true },
+  // lists view switcher: same card, different container - same invariants
+  { name: 'gallery-desktop-he', vw: 1440, q: 'lang=he&theme=light&seed=fresh&listview=gallery' },
+  { name: 'carousel-desktop-he', vw: 1440, q: 'lang=he&theme=light&seed=fresh&listview=carousel' },
+  { name: 'gallery-phone-he', vw: 390, q: 'lang=he&theme=light&seed=fresh&listview=gallery', mobile: true },
+  { name: 'carousel-phone-he', vw: 390, q: 'lang=he&theme=light&seed=fresh&listview=carousel', mobile: true },
 ];
 
 const b = await launchChromium();
