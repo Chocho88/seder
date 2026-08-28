@@ -7,6 +7,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useSeder } from '../lib/store';
 import { startDrag } from '../lib/resize';
+import { useIsMobile } from '../lib/useIsMobile';
 import { t } from '../lib/i18n';
 import type { Category } from '../lib/types';
 import CategoryCard from './CategoryCard';
@@ -14,8 +15,9 @@ import './board.css';
 
 const ROW_UNIT = 8; // grid-auto-rows px — fine granularity for dense packing
 const GRID_GAP = 20;
+const GRID_GAP_MOBILE = 12; // must equal the .mobile-canvas .board-bento gap in mobile.css
 
-const rowsFor = (px: number) => Math.max(6, Math.ceil((px + GRID_GAP) / (ROW_UNIT + GRID_GAP)));
+const rowsFor = (px: number, gap: number) => Math.max(6, Math.ceil((px + gap) / (ROW_UNIT + gap)));
 
 /** One bento cell: measures itself when natural, obeys the grip when sized. */
 function BentoItem({ category, children }: { category: Category; children: React.ReactNode }) {
@@ -25,8 +27,13 @@ function BentoItem({ category, children }: { category: Category; children: React
   const [naturalPx, setNaturalPx] = useState(0);
   const [live, setLive] = useState<{ w: number; h: number } | null>(null);
 
-  const w = live?.w ?? category.w ?? 2;
-  const fixedH = live?.h ?? category.h ?? null;
+  // Phone: a Keep-style two-column lattice. There is no grip on touch, so
+  // desktop-dragged spans and heights don't apply - every card is exactly
+  // one column wide and its content's height; the dense grid staggers them.
+  const mobile = useIsMobile();
+  const gap = mobile ? GRID_GAP_MOBILE : GRID_GAP;
+  const w = mobile ? 1 : (live?.w ?? category.w ?? 2);
+  const fixedH = mobile ? null : (live?.h ?? category.h ?? null);
 
   // natural height tracking (only drives layout while unfixed)
   useLayoutEffect(() => {
@@ -70,7 +77,7 @@ function BentoItem({ category, children }: { category: Category; children: React
     <div
       ref={cellRef}
       className={`bento-item${fixedH !== null ? ' bento-fixed' : ''}`}
-      style={{ gridColumn: `span ${w}`, gridRow: `span ${rowsFor(h)}` }}
+      style={{ gridColumn: `span ${w}`, gridRow: `span ${rowsFor(h, gap)}` }}
     >
       <div ref={innerRef} className="bento-inner" style={fixedH !== null ? { height: fixedH } : undefined}>
         {children}

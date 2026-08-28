@@ -10,7 +10,9 @@
   column-count: 1;
   column-gap: var(--space-5);
 }
-@container (min-width: 420px) {
+/* 330px: low enough that a phone (~350px pane after page insets) gets the
+   Keep-style two-column pack instead of one long stack */
+@container (min-width: 330px) {
   .board-gallery {
     column-count: 2;
   }

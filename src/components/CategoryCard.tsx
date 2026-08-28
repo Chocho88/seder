@@ -38,6 +38,9 @@ export default function CategoryCard({ category }: { category: Category }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerPos, setPickerPos] = useState<React.CSSProperties>({});
   const [renaming, setRenaming] = useState<string | null>(null);
+  // touch narrow-grid cards: header tools hide at rest (they would crush
+  // the title); a tap on the header brings them out. Desktop hover-reveals.
+  const [toolsOpen, setToolsOpen] = useState(false);
   const top = topLevelOf(items, category.id);
   const open = top.filter((i) => !i.done);
   const done = top.filter((i) => i.done);
@@ -97,8 +100,14 @@ export default function CategoryCard({ category }: { category: Category }) {
       }}
     >
       <header
-        className="category-card-header"
+        className={`category-card-header${toolsOpen ? ' tools-open' : ''}`}
         draggable={renaming === null}
+        onClick={() => {
+          // same 768px line as the CSS that hides the tools at rest -
+          // width, not hover capability, so a narrow mouse window can
+          // still reach them by click
+          if (window.matchMedia('(max-width: 768px)').matches) setToolsOpen((o) => !o);
+        }}
         onDragStart={(e) => {
           e.stopPropagation();
           setDragCategory(category.id);

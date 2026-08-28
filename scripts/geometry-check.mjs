@@ -89,6 +89,12 @@ for (const c of cases) {
   if (await shareBtn.count()) {
     const header = p.locator('.category-card:not([data-system]) .category-card-header').first();
     if (!c.mobile) await header.hover();
+    // phone narrow grids hide the tools at rest; a header tap reveals them
+    // (CategoryCard's tools-open) - carousel keeps them out, tap is harmless
+    if (c.mobile) {
+      await header.tap();
+      await p.waitForTimeout(120);
+    }
     await shareBtn.click({ force: c.mobile === true });
     await p.waitForTimeout(100);
     const pop = p.locator('.share-popover');

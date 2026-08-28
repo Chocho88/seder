@@ -140,6 +140,7 @@ const DICT: Record<string, { en: string; he: string }> = {
   view_bento: { en: 'Bento', he: 'בנטו' },
   view_gallery: { en: 'Gallery', he: 'גלריה' },
   view_carousel: { en: 'Carousel', he: 'קרוסלה' },
+  view_cycle: { en: 'tap to switch view', he: 'הקשה מחליפה תצוגה' },
   carousel_prev: { en: 'Previous list', he: 'הרשימה הקודמת' },
   carousel_next: { en: 'Next list', he: 'הרשימה הבאה' },
   // sync diagnostics

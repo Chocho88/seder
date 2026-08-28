@@ -27,21 +27,76 @@
     padding-block-end: calc(170px + env(safe-area-inset-bottom, 0px));
   }
 
-  /* Phone cards are as tall as their content, never a desktop-dragged or
-     grid-measured height. The desktop packs cards into a measured 8px grid;
-     any mismatch there CROPS a card's tail (the add-item field) on the
-     phone - so the phone opts out entirely: one simple stacked column. */
+  /* --- Phone bento: a real Keep-style staggered grid. ---
+     Two content-tall columns, dense packing: BentoBoard measures every
+     card and spans 8px lattice rows, exactly like desktop - but on touch
+     it ignores desktop-dragged widths/heights entirely (w=1, natural
+     height), so nothing can crop a card's tail. The 12px gap here MUST
+     equal GRID_GAP_MOBILE in BentoBoard.tsx or the spans miscount. */
   .mobile-canvas .board-bento {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
   }
-  .mobile-canvas .bento-item,
-  .mobile-canvas .bento-inner {
-    height: auto !important;
+  /* the new-list ghost keeps its own full-width row at the tail */
+  .mobile-canvas .board-bento .board-add-category {
+    grid-column: 1 / -1;
+    grid-row: span 3;
   }
-  .mobile-canvas .bento-fixed .category-card-body {
-    overflow-y: visible; /* the page scrolls; cards never scroll inside it */
+  /* no grip on a phone: cards are content-tall here by design, and the
+     hover:none guard alone can't be trusted across embedded webviews */
+  .mobile-canvas .bento-grip {
+    display: none;
+  }
+
+  /* Narrow cards (~170px): titles wrap to two lines instead of losing
+     most of their words to an ellipsis; anything longer still clips. */
+  .mobile-canvas .board .item-title {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: break-word;
+  }
+  /* A ~170px card cannot seat title + share + sweep + delete on one
+     line - always-on tools crushed titles to a single letter. In the
+     two-column grids they hide at rest; a header tap reveals them
+     (see CategoryCard's tools-open). Carousel's full-width card keeps
+     its tools out at all times. */
+  .mobile-canvas .board-bento .category-card-tools,
+  .mobile-canvas .board-gallery .category-card-tools {
+    display: none;
+  }
+  .mobile-canvas .board-bento .tools-open .category-card-tools,
+  .mobile-canvas .board-gallery .tools-open .category-card-tools {
+    display: inline-flex;
+  }
+  /* the sub-count (0/3) is the widest row signal; on narrow grid cards
+     the title needs that width more (depth still shows via the dot) */
+  .mobile-canvas .board-bento .item-kidcount,
+  .mobile-canvas .board-gallery .item-kidcount {
+    display: none;
+  }
+  /* Gallery on a phone: same Keep rhythm as bento - two columns is set
+     by galleryboard.css's container query; tighten its gaps to match. */
+  .mobile-canvas .board-gallery {
+    column-gap: 12px;
+  }
+  .mobile-canvas .gallery-item {
+    margin-block-end: 12px;
+  }
+
+  /* No hover on touch: the per-card add-item field must be visible at
+     rest or new items have no discoverable home. It stays whisper-weight
+     (tertiary placeholder), so four cards don't shout four times. */
+  .mobile-canvas .category-card-add {
+    opacity: 1;
+  }
+
+  /* the one view-switch button: a finger-sized target on touch */
+  .mobile-canvas .board-viewswitch {
+    width: 40px;
+    height: 40px;
   }
 
   /* Row and header controls whisper on touch (they are always-visible
@@ -252,5 +307,15 @@
   input:not([type]),
   textarea {
     font-size: 16px !important;
+  }
+}
+
+/* The smallest phones (SE-class, ≤360px): two ~135px columns shatter
+   every title - one readable column beats two illegible ones. The
+   ghost's 1 / -1 span and the cards' span-1 cells survive the track
+   count change untouched. */
+@media (max-width: 360px) {
+  .mobile-canvas .board-bento {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

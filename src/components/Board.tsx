@@ -2,8 +2,9 @@
 // Gallery (dense Keep-style masonry) or Carousel (one big list at a time,
 // swipe to the next - "like an Instagram carousel"). Matrix keeps its own
 // permanent spot regardless of this switch - it only changes how the
-// LISTS render. Switching modes is click/tap only; swipe lives inside
-// Carousel, where it is the whole point.
+// LISTS render. One unified switch, Keep-style: a single icon button that
+// wears the current view's glyph and cycles bento → gallery → carousel.
+// Swipe lives inside Carousel, where it is the whole point.
 
 import { useState } from 'react';
 import icons from '../../vendor/design-system/icons.svg';
@@ -66,24 +67,20 @@ function NewListGhost({ onAdd }: { onAdd: (name: string) => void }) {
 export default function Board() {
   const { categories, addCategory, listView, setListView } = useSeder();
   const ghost = <NewListGhost onAdd={(name) => void addCategory(name)} />;
+  const modeIdx = Math.max(0, MODES.findIndex((m) => m.id === listView));
+  const mode = MODES[modeIdx];
+  const next = MODES[(modeIdx + 1) % MODES.length];
 
   return (
     <div className="board">
-      <div className="board-viewswitch" role="tablist">
-        {MODES.map(({ id, Icon, label }) => (
-          <button
-            key={id}
-            className={`board-viewswitch-btn pressable tooltip${listView === id ? ' on' : ''}`}
-            role="tab"
-            aria-selected={listView === id}
-            data-tooltip={t(label)}
-            aria-label={t(label)}
-            onClick={() => setListView(id)}
-          >
-            <Icon className="icon" />
-          </button>
-        ))}
-      </div>
+      <button
+        className="board-viewswitch pressable tooltip"
+        data-tooltip={`${t(mode.label)} · ${t('view_cycle')}`}
+        aria-label={`${t(mode.label)} · ${t('view_cycle')}`}
+        onClick={() => setListView(next.id)}
+      >
+        <mode.Icon className="icon" />
+      </button>
 
       {listView === 'bento' && <BentoBoard categories={categories} ghost={ghost} />}
       {listView === 'gallery' && <GalleryBoard categories={categories} ghost={ghost} />}

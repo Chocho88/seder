@@ -1,7 +1,8 @@
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect } from 'react';
 import icons from '../vendor/design-system/icons.svg';
 import { useSeder } from './lib/store';
 import { useLang, toggleLang, t } from './lib/i18n';
+import { useIsMobile } from './lib/useIsMobile';
 import Canvas from './components/Canvas';
 import { SectionShell, renderSection } from './components/Sections';
 import DetailPanel from './components/DetailPanel';
@@ -17,16 +18,6 @@ import RecoveryBanner from './components/RecoveryBanner';
 
 // One clean scrollable column on phones: lists on top, matrix below (the
 // user's whiteboard sketch). Desktop is the holistic canvas - no tabs.
-const mq = typeof window !== 'undefined' ? window.matchMedia('(max-width: 768px)') : null;
-function useIsMobile(): boolean {
-  return useSyncExternalStore(
-    (cb) => {
-      mq?.addEventListener('change', cb);
-      return () => mq?.removeEventListener('change', cb);
-    },
-    () => mq?.matches ?? false,
-  );
-}
 
 /** Phone: the same sections, one clean scrollable column, same order. */
 function MobileCanvas() {
