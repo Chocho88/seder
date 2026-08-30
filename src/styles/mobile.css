@@ -60,16 +60,12 @@
   }
   /* A ~170px card cannot seat title + share + sweep + delete on one
      line - always-on tools crushed titles to a single letter. In the
-     two-column grids they hide at rest; a header tap reveals them
-     (see CategoryCard's tools-open). Carousel's full-width card keeps
+     two-column grids the header stays clean: a tap on it opens the
+     bottom action sheet (CardSheet). Carousel's full-width card keeps
      its tools out at all times. */
   .mobile-canvas .board-bento .category-card-tools,
   .mobile-canvas .board-gallery .category-card-tools {
     display: none;
-  }
-  .mobile-canvas .board-bento .tools-open .category-card-tools,
-  .mobile-canvas .board-gallery .tools-open .category-card-tools {
-    display: inline-flex;
   }
   /* the sub-count (0/3) is the widest row signal; on narrow grid cards
      the title needs that width more (depth still shows via the dot) */
@@ -97,6 +93,28 @@
   .mobile-canvas .board-viewswitch {
     width: 40px;
     height: 40px;
+  }
+
+  /* Keep-strength color on the phone: the desktop wash (14-16%) reads
+     almost white on a small sunlit screen. One scalar override via
+     color-mix - the 20 per-color rgba literals in seder.css stay
+     untouched, and custom colors ride along since both paths set
+     --cat-color. Mirrors seder.css's tint gradient sandwich exactly. */
+  [data-cardstyle='tint'] .mobile-canvas .category-card {
+    background:
+      linear-gradient(
+        color-mix(in srgb, var(--cat-color, transparent) 22%, transparent),
+        color-mix(in srgb, var(--cat-color, transparent) 22%, transparent)
+      ),
+      var(--surface-card);
+  }
+  [data-theme='dark'][data-cardstyle='tint'] .mobile-canvas .category-card {
+    background:
+      linear-gradient(
+        color-mix(in srgb, var(--cat-color, transparent) 26%, transparent),
+        color-mix(in srgb, var(--cat-color, transparent) 26%, transparent)
+      ),
+      var(--surface-card);
   }
 
   /* Row and header controls whisper on touch (they are always-visible
@@ -161,10 +179,7 @@
 
   /* Matrix on a phone: quadrants shrink gracefully.
      Titles get the space — signals hide, text wraps to two lines. */
-  .matrix {
-    grid-template-columns: max-content minmax(0, 1fr) minmax(0, 1fr);
-  }
-  .matrix-quadrant {
+  .mobile-canvas .matrix-quadrant {
     padding: var(--space-2);
   }
   .matrix .item-signals {
@@ -195,44 +210,55 @@
    corners), the vertical label column disappears, chips get
    full-width titles.
    ============================================================ */
+/* mobile.css loads BEFORE the per-component stylesheets (main.tsx imports
+   it ahead of App), so bare selectors here LOSE to equal-specificity rules
+   in matrix.css - this whole remap was silently dead and the phone layout
+   only held because the base template's label column collapses to 0px.
+   Every rule that must beat matrix.css is therefore scoped under
+   .mobile-canvas (phones always render the matrix inside it). */
 @media (max-width: 768px) {
-  .matrix {
+  .mobile-canvas .matrix {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: auto minmax(150px, auto) minmax(150px, auto) auto;
-    --matrix-row-min: 150px;
+    grid-template-rows: auto minmax(110px, auto) minmax(110px, auto) auto;
+    --matrix-row-min: 110px;
+  }
+  /* an all-empty bottom row (not-important pair) folds to a sliver - it
+     stays a live drop target, just not a dead half-screen band */
+  .mobile-canvas .matrix:has(.mq-u-ni:empty):has(.mq-nu-ni:empty) {
+    grid-template-rows: auto minmax(110px, auto) minmax(48px, auto) auto;
   }
   /* x labels stay a row; y labels become quadrant captions */
-  .matrix-label-x {
+  .mobile-canvas .matrix-label-x {
     grid-row: 1;
   }
-  .matrix-x1 {
+  .mobile-canvas .matrix-x1 {
     grid-column: 1;
   }
-  .matrix-x2 {
+  .mobile-canvas .matrix-x2 {
     grid-column: 2;
   }
-  .matrix-label-y {
+  .mobile-canvas .matrix-label-y {
     display: none;
   }
-  .mq-u-i {
+  .mobile-canvas .mq-u-i {
     grid-area: 2 / 1;
   }
-  .mq-nu-i {
+  .mobile-canvas .mq-nu-i {
     grid-area: 2 / 2;
   }
-  .mq-u-ni {
+  .mobile-canvas .mq-u-ni {
     grid-area: 3 / 1;
   }
-  .mq-nu-ni {
+  .mobile-canvas .mq-nu-ni {
     grid-area: 3 / 2;
   }
-  .matrix-axis-v {
+  .mobile-canvas .matrix-axis-v {
     grid-area: 2 / 2 / 4 / 3;
   }
-  .matrix-axis-h {
+  .mobile-canvas .matrix-axis-h {
     grid-area: 3 / 1 / 4 / 3;
   }
-  .matrix-unplaced {
+  .mobile-canvas .matrix-unplaced {
     grid-area: 4 / 1 / 5 / 3;
   }
   /* quadrant captions: "חשוב" / "לא חשוב" whispered inside */
@@ -276,7 +302,7 @@
   }
 }
 @media (max-width: 768px) {
-  .matrix-card {
+  .mobile-canvas .matrix-card {
     grid-area: 2 / 1 / 5 / 3;
   }
 }

@@ -69,6 +69,8 @@ const DICT: Record<string, { en: string; he: string }> = {
   move_to: { en: 'Move to', he: 'להעביר אל' },
   new_list_placeholder: { en: 'List name…', he: 'שם הרשימה…' },
   rename_hint: { en: 'Double-click to rename', he: 'לחיצה כפולה לשינוי שם' },
+  rename: { en: 'Rename', he: 'שינוי שם' },
+  list_actions: { en: 'List actions', he: 'פעולות רשימה' },
   pool_empty: { en: 'New captures land here', he: 'פריטים חדשים נוחתים כאן' },
   resize_hint: { en: 'Drag to resize · double-click to reset', he: 'גרירה לשינוי גודל · לחיצה כפולה לאיפוס' },
   custom_color: { en: 'Custom', he: 'מותאם' },
@@ -141,11 +143,18 @@ const DICT: Record<string, { en: string; he: string }> = {
   view_gallery: { en: 'Gallery', he: 'גלריה' },
   view_carousel: { en: 'Carousel', he: 'קרוסלה' },
   view_cycle: { en: 'tap to switch view', he: 'הקשה מחליפה תצוגה' },
+  // task -> calendar handoff
+  gcal_add: { en: 'Add to Google Calendar', he: 'הוספה ליומן Google' },
+  ics_download: { en: 'Calendar file', he: 'קובץ יומן' },
   carousel_prev: { en: 'Previous list', he: 'הרשימה הקודמת' },
   carousel_next: { en: 'Next list', he: 'הרשימה הבאה' },
   // sync diagnostics
   sharing_not_installed: { en: 'Sharing is not set up on the server yet (the SQL file was not run). Lists and tasks still sync.', he: 'השיתוף עוד לא הותקן בשרת (קובץ ה-SQL לא הורץ). רשימות ומשימות ממשיכות להסתנכרן.' },
   sync_error_detail: { en: 'Last error', he: 'שגיאה אחרונה' },
+  sync_issue: { en: 'Some changes have not synced yet - will keep trying', he: 'חלק מהשינויים לא הסתנכרנו - ננסה שוב' },
+  sync_details: { en: 'Details', he: 'פרטים' },
+  sync_parked_n: { en: 'changes set aside, safe on this device', he: 'שינויים בצד, שמורים במכשיר הזה' },
+  sync_parked_retry: { en: 'Try again', he: 'לנסות שוב' },
   // previous-account recovery
   recovery_found: { en: 'Found {n} tasks saved from a previous sign-in on this device', he: 'נמצאו {n} משימות שנשמרו מהתחברות קודמת במכשיר הזה' },
   recovery_restore: { en: 'Bring them into this account', he: 'להעביר אותן לחשבון הזה' },

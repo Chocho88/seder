@@ -121,11 +121,16 @@ export default function SettingsMenu() {
 
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => {
+    const close = (e: MouseEvent | TouchEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
+    // touchstart too - see AccountMenu: outside taps must dismiss on iOS
     window.addEventListener('mousedown', close);
-    return () => window.removeEventListener('mousedown', close);
+    window.addEventListener('touchstart', close, { passive: true });
+    return () => {
+      window.removeEventListener('mousedown', close);
+      window.removeEventListener('touchstart', close);
+    };
   }, [open]);
 
   const exportBackup = async () => {

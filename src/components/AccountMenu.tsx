@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from 'react';
 import icons from '../../vendor/design-system/icons.svg';
 import { GoogleIcon } from './SederIcons';
 import { useAuth, signInWithEmail, signInWithGoogle, signOut, syncNow } from '../lib/auth';
-import { syncStatus, probeRoundTrip } from '../lib/sync';
+import { syncStatus, probeRoundTrip, retryParked } from '../lib/sync';
+import { statusView, type SyncErrorInfo } from '../lib/syncHealth';
 import { t, useLang } from '../lib/i18n';
 import './account.css';
 
@@ -19,8 +20,10 @@ export default function AccountMenu() {
   const [googleError, setGoogleError] = useState(false);
   const [status, setStatus] = useState<{
     pending: number;
+    parked: number;
     lastOk: number | null;
-    lastError: string | null;
+    lastPullOk: number | null;
+    lastError: SyncErrorInfo | null;
     sharingReady: boolean;
   } | null>(null);
   const [probe, setProbe] = useState<'idle' | 'running' | { ok: boolean; ms?: number; error?: string }>('idle');
@@ -42,11 +45,17 @@ export default function AccountMenu() {
 
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent) => {
+    const close = (e: MouseEvent | TouchEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
+    // touchstart too: iOS fires synthetic mousedown unreliably on some
+    // targets, and the panel must dismiss on the first outside tap
     window.addEventListener('mousedown', close);
-    return () => window.removeEventListener('mousedown', close);
+    window.addEventListener('touchstart', close, { passive: true });
+    return () => {
+      window.removeEventListener('mousedown', close);
+      window.removeEventListener('touchstart', close);
+    };
   }, [open]);
 
   // live sync truth while the panel is open
@@ -66,12 +75,23 @@ export default function AccountMenu() {
 
   const avatar = auth.session?.user.user_metadata?.avatar_url as string | undefined;
   const name = (auth.session?.user.user_metadata?.full_name as string | undefined) ?? auth.session?.user.email ?? '';
+  // one calm truth per state - statusView (pure, tested) decides which
+  const vm = status
+    ? statusView({
+        pending: status.pending,
+        parked: status.parked,
+        lastOk: status.lastOk,
+        lastPullOk: status.lastPullOk,
+        error: status.lastError,
+        now: Date.now(),
+      })
+    : null;
   const syncLine = !status
     ? t('synced')
-    : status.pending > 0
+    : vm!.line === 'pending'
       ? `${status.pending} ${t('sync_pending_n')}`
-      : status.lastOk
-        ? `${t('sync_all_clear')} · ${t('last_synced')} ${new Intl.DateTimeFormat(lang === 'he' ? 'he-IL' : 'en-US', { hour: 'numeric', minute: '2-digit' }).format(status.lastOk)}`
+      : vm!.line === 'fresh'
+        ? `${t('sync_all_clear')} · ${t('last_synced')} ${new Intl.DateTimeFormat(lang === 'he' ? 'he-IL' : 'en-US', { hour: 'numeric', minute: '2-digit' }).format(vm!.freshAt!)}`
         : t('never_synced');
 
   return (
@@ -97,10 +117,26 @@ export default function AccountMenu() {
                 {avatar && <img className="account-avatar-lg" src={avatar} alt="" referrerPolicy="no-referrer" />}
                 <div className="account-name">{name}</div>
                 <div className="account-sub">{syncLine}</div>
-                {/* the truth, not a mood: what exactly went wrong last */}
-                {status?.lastError && (
-                  <div className="account-sync-error" dir="ltr">
-                    {t('sync_error_detail')}: {status.lastError}
+                {/* a short humane line; the raw technical detail lives one
+                    tap away, never in the reader's face */}
+                {vm?.errorVisible && status?.lastError && (
+                  <div className="account-sync-issue">
+                    {t('sync_issue')}
+                    <details className="account-sync-details">
+                      <summary>{t('sync_details')}</summary>
+                      <span dir="ltr">{status.lastError.detail}</span>
+                    </details>
+                  </div>
+                )}
+                {status !== null && status.parked > 0 && (
+                  <div className="account-sync-note account-parked">
+                    {status.parked} {t('sync_parked_n')}
+                    <button
+                      className="account-parked-retry pressable"
+                      onClick={() => void retryParked().then(() => syncStatus().then(setStatus))}
+                    >
+                      {t('sync_parked_retry')}
+                    </button>
                   </div>
                 )}
                 {status && !status.sharingReady && <div className="account-sync-note">{t('sharing_not_installed')}</div>}

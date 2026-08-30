@@ -4,12 +4,14 @@
 // row to place it exactly there. Double-click the title to rename. Hover
 // the header for sweep (when done items exist) and delete (items -> Pool).
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import icons from '../../vendor/design-system/icons.svg';
 import { UsersIcon } from './SederIcons';
 import ShareMenu from './ShareMenu';
+import CardSheet from './CardSheet';
 import { useSeder, topLevelOf } from '../lib/store';
+import { useIsMobile } from '../lib/useIsMobile';
 import { useAuth } from '../lib/auth';
 import { dirProps } from '../lib/rtl';
 import { t } from '../lib/i18n';
@@ -38,12 +40,23 @@ export default function CategoryCard({ category }: { category: Category }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerPos, setPickerPos] = useState<React.CSSProperties>({});
   const [renaming, setRenaming] = useState<string | null>(null);
-  // touch narrow-grid cards: header tools hide at rest (they would crush
-  // the title); a tap on the header brings them out. Desktop hover-reveals.
-  const [toolsOpen, setToolsOpen] = useState(false);
+  // phone grids: header tools would crush the title, so a header tap opens
+  // the bottom action sheet instead. Desktop keeps its hover tools.
+  const [sheetOpen, setSheetOpen] = useState(false);
+  // header long-press lifts the card for reorder (same grammar as rows:
+  // 320ms arm, 10px cancel) - tap and lift stay two distinct gestures
+  const liftTimer = useRef<number | null>(null);
+  const liftStart = useRef<{ x: number; y: number } | null>(null);
+  const lifted = useRef(false);
+  const setTouchDrag = useSeder((s) => s.setTouchDrag);
   const top = topLevelOf(items, category.id);
   const open = top.filter((i) => !i.done);
   const done = top.filter((i) => i.done);
+  // Phone grids show only top-level rows (Keep previews the surface, the
+  // depth dot whispers "more inside"); carousel is full-width and keeps
+  // the whole tree. Desktop always shows children.
+  const listView = useSeder((s) => s.listView);
+  const leaf = useIsMobile() && listView !== 'carousel';
 
   const dragForeign = dragItemId !== null && items.find((i) => i.id === dragItemId)?.categoryId !== category.id;
   // the Pool is a system list - its name speaks the UI language
@@ -100,13 +113,58 @@ export default function CategoryCard({ category }: { category: Category }) {
       }}
     >
       <header
-        className={`category-card-header${toolsOpen ? ' tools-open' : ''}`}
+        className="category-card-header"
         draggable={renaming === null}
         onClick={() => {
-          // same 768px line as the CSS that hides the tools at rest -
-          // width, not hover capability, so a narrow mouse window can
-          // still reach them by click
-          if (window.matchMedia('(max-width: 768px)').matches) setToolsOpen((o) => !o);
+          // a release that ended a lift is not a tap
+          if (lifted.current || useSeder.getState().touchDrag) {
+            lifted.current = false;
+            return;
+          }
+          // leaf = the phone grids exactly (mobile, not carousel) - the
+          // same worlds whose CSS hides the header tools at rest
+          if (leaf && renaming === null) setSheetOpen(true);
+        }}
+        onPointerDown={(e) => {
+          // touch only, phone grids only - mouse keeps native HTML5 drag
+          if (e.pointerType === 'mouse' || !leaf) return;
+          lifted.current = false;
+          liftStart.current = { x: e.clientX, y: e.clientY };
+          const el = e.currentTarget as HTMLElement;
+          // once the card lifts, iOS must not reclaim the gesture for scroll
+          const block = (ev: TouchEvent) => {
+            if (useSeder.getState().dragCategoryId === category.id) ev.preventDefault();
+          };
+          el.addEventListener('touchmove', block, { passive: false });
+          const cleanup = () => {
+            el.removeEventListener('touchmove', block);
+            el.removeEventListener('touchend', cleanup);
+            el.removeEventListener('touchcancel', cleanup);
+          };
+          el.addEventListener('touchend', cleanup);
+          el.addEventListener('touchcancel', cleanup);
+          liftTimer.current = window.setTimeout(() => {
+            liftTimer.current = null;
+            lifted.current = true;
+            setDragCategory(category.id);
+            setTouchDrag({ x: liftStart.current!.x, y: liftStart.current!.y, title: displayName });
+            (navigator as { vibrate?: (ms: number) => void }).vibrate?.(12);
+          }, 320);
+        }}
+        onPointerMove={(e) => {
+          if (liftTimer.current === null || !liftStart.current) return;
+          if (Math.hypot(e.clientX - liftStart.current.x, e.clientY - liftStart.current.y) > 10) {
+            window.clearTimeout(liftTimer.current);
+            liftTimer.current = null;
+          }
+        }}
+        onPointerUp={() => {
+          if (liftTimer.current !== null) window.clearTimeout(liftTimer.current);
+          liftTimer.current = null;
+        }}
+        onPointerCancel={() => {
+          if (liftTimer.current !== null) window.clearTimeout(liftTimer.current);
+          liftTimer.current = null;
         }}
         onDragStart={(e) => {
           e.stopPropagation();
@@ -265,7 +323,7 @@ export default function CategoryCard({ category }: { category: Category }) {
               void dropOn(`row:${i.id}`);
             }}
           >
-            <ItemRow item={i} />
+            <ItemRow item={i} leaf={leaf} />
           </div>
         ))}
         {/* end-of-list landing zone: appears while a top-level row is in the air */}
@@ -293,7 +351,7 @@ export default function CategoryCard({ category }: { category: Category }) {
           </div>
         )}
         {done.map((i) => (
-          <ItemRow key={i.id} item={i} />
+          <ItemRow key={i.id} item={i} leaf={leaf} />
         ))}
         <input
           className="category-card-add"
@@ -308,6 +366,20 @@ export default function CategoryCard({ category }: { category: Category }) {
           {...(adding.trim() ? dirProps(adding) : {})}
         />
       </div>
+
+      {sheetOpen && (
+        <CardSheet
+          category={category}
+          displayName={displayName}
+          canDelete={canDelete}
+          doneCount={done.length}
+          openCount={open.length}
+          onRename={() => {
+            if (!category.system) setRenaming(category.name);
+          }}
+          close={() => setSheetOpen(false)}
+        />
+      )}
     </section>
   );
 }

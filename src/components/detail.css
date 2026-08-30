@@ -559,3 +559,36 @@
   width: 11px;
   height: 11px;
 }
+
+/* --- Deadline -> calendar handoff: two quiet links under the dates.
+   Same voice as the date rows (14px icons, secondary ink); they read as
+   companions of the deadline, not as a new section. --- */
+.detail-calendar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  margin-block-start: var(--space-2);
+  padding-inline-start: 2px;
+}
+.detail-calendar-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: none;
+  background: transparent;
+  padding: var(--space-1) 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+}
+.detail-calendar-link:hover {
+  color: var(--text-primary);
+}
+.detail-calendar-link .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}

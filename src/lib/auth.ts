@@ -14,6 +14,15 @@ let state: AuthState = { status: syncConfigured ? 'loading' : 'unconfigured', se
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
+// The first onSession pass (owner check, pool/prefs re-key, outbox seed)
+// settles here - boot diagnostics wait for it so their pending count is
+// the real one, not a pre-seed zero (the beacon once reported 0 and 32
+// nine seconds apart for exactly this reason).
+let settle: () => void;
+export const whenSessionSettled: Promise<void> = new Promise((res) => {
+  settle = res;
+});
+
 async function onSession(session: Session | null) {
   // A different account on this device than the one whose data is here:
   // wipe local first, so nothing leaks between users sharing a browser.
@@ -57,6 +66,7 @@ async function onSession(session: Session | null) {
     await syncNow();
     startRealtime();
   }
+  settle();
 }
 
 if (supabase) {

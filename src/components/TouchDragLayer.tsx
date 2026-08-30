@@ -1,6 +1,7 @@
-// Touch drag controller: after a long-press picks a row up, this layer
-// follows the finger, highlights [data-drop] targets, and executes the drop
-// through the same store executor the mouse path uses.
+// Touch drag controller: after a long-press picks a row OR a list card up,
+// this layer follows the finger, highlights [data-drop] targets, and
+// executes the drop through the same store paths the mouse uses (dropOn
+// for items; reorderCategory for cards, mirroring CategoryCard's onDrop).
 
 import { useEffect, useRef } from 'react';
 import { useSeder } from '../lib/store';
@@ -8,11 +9,12 @@ import { dirProps } from '../lib/rtl';
 import './touchdrag.css';
 
 export default function TouchDragLayer() {
-  const { touchDrag, dragItemId, setTouchDrag, setDragItem, dropOn } = useSeder();
+  const { touchDrag, dragItemId, dragCategoryId, setTouchDrag, setDragItem, setDragCategory, dropOn, reorderCategory } =
+    useSeder();
   const hoverEl = useRef<Element | null>(null);
 
   useEffect(() => {
-    if (!touchDrag || !dragItemId) return;
+    if (!touchDrag || (!dragItemId && !dragCategoryId)) return;
 
     const clearHover = () => {
       hoverEl.current?.classList.remove('drag-over');
@@ -23,7 +25,10 @@ export default function TouchDragLayer() {
       e.preventDefault();
       setTouchDrag({ x: e.clientX, y: e.clientY, title: useSeder.getState().touchDrag?.title ?? '' });
       const under = document.elementFromPoint(e.clientX, e.clientY);
-      const target = under?.closest('[data-drop]') ?? null;
+      // a card in the air only lands on other cards; a row lands anywhere
+      const catId = useSeder.getState().dragCategoryId;
+      let target = under?.closest(catId ? '[data-drop^="cat:"]' : '[data-drop]') ?? null;
+      if (catId && target?.getAttribute('data-drop') === `cat:${catId}`) target = null; // not onto itself
       if (target !== hoverEl.current) {
         clearHover();
         if (target) {
@@ -38,7 +43,12 @@ export default function TouchDragLayer() {
       finished = true;
       const key = hoverEl.current?.getAttribute('data-drop');
       clearHover();
-      if (key) void dropOn(key);
+      const catId = useSeder.getState().dragCategoryId;
+      if (catId) {
+        if (key?.startsWith('cat:') && key.slice(4) !== catId) void reorderCategory(catId, key.slice(4));
+        setDragCategory(null);
+        setTouchDrag(null);
+      } else if (key) void dropOn(key);
       else setDragItem(null);
     };
 
@@ -67,7 +77,7 @@ export default function TouchDragLayer() {
       clearHover();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Boolean(touchDrag), dragItemId]);
+  }, [Boolean(touchDrag), dragItemId, dragCategoryId]);
 
   if (!touchDrag) return null;
   return (

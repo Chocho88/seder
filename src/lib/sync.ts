@@ -17,6 +17,15 @@
 import type { RealtimeChannel, Session } from '@supabase/supabase-js';
 import { db, outbox, meta, withRemote, uid, type OutboxTable } from './db';
 import { isMissingTableError, neutralizeShared, prefsFromItem, type ItemPrefs } from './shareSplit';
+import {
+  isTransientError,
+  mergeParked,
+  parseSyncError,
+  shouldPark,
+  unparkPlan,
+  type ParkedEntry,
+  type SyncErrorInfo,
+} from './syncHealth';
 import { supabase } from './supabase';
 import type { Category, Item, Share } from './types';
 
@@ -89,6 +98,7 @@ function sendBeacon(error: string | null, event = 'sync'): void {
   void (async () => {
     try {
       const pending = await outbox.count();
+      const parked = (((await meta.get('parked'))?.value as ParkedEntry[] | undefined) ?? []).length;
       await fetch('/api/beacon', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -98,6 +108,7 @@ function sendBeacon(error: string | null, event = 'sync'): void {
           uid: session?.user.id ?? 'anon',
           signedIn: session !== null,
           pending,
+          parked,
           sharingReady,
           error,
         }),
@@ -110,19 +121,64 @@ function sendBeacon(error: string | null, event = 'sync'): void {
     load was previously invisible (sync never runs without a session), and
     invisible is indistinguishable from "never opened the app". */
 export async function beaconBoot(): Promise<void> {
-  const lastError = ((await meta.get('lastSyncError'))?.value as string | undefined) ?? null;
-  sendBeacon(lastError, 'boot');
+  sendBeacon((await readLastError())?.detail ?? null, 'boot');
+}
+
+/** lastSyncError, structured. A legacy pre-stamped string written by an
+    older build parses to null and is deleted on sight - the frozen
+    "[20:38] push categories: ..." line dies right here. */
+async function readLastError(): Promise<SyncErrorInfo | null> {
+  const raw = (await meta.get('lastSyncError'))?.value;
+  if (raw === undefined) return null;
+  const parsed = parseSyncError(raw);
+  if (!parsed) await meta.delete('lastSyncError');
+  return parsed;
 }
 
 function noteFailure(detail: string): void {
   cycleFailed = true;
-  const stamped = `[${new Date().toTimeString().slice(0, 5)}] ${detail}`;
-  void meta.put({ key: 'lastSyncError', value: stamped });
+  void meta.put({ key: 'lastSyncError', value: { at: Date.now(), detail } satisfies SyncErrorInfo });
   sendBeacon(detail);
   if (!failureToasted) {
     failureToasted = true;
     onSyncFailure?.();
   }
+}
+
+// --- Parked changes: rows the server keeps refusing for a durable reason.
+// They leave the outbox (so sync can go clean and honest) but stay intact
+// in local Dexie; the account panel shows a quiet count + one-tap retry.
+
+async function readParked(): Promise<ParkedEntry[]> {
+  return ((await meta.get('parked'))?.value as ParkedEntry[] | undefined) ?? [];
+}
+
+async function park(entry: Omit<ParkedEntry, 'parkedAt' | 'attempts' | 'reason'>, reason: string): Promise<void> {
+  const merged = mergeParked(await readParked(), [{ ...entry, reason, parkedAt: Date.now(), attempts: 1 }]);
+  await meta.put({ key: 'parked', value: merged });
+  console.warn('[sync] parked', entry.table, entry.rowId, reason);
+  sendBeacon(`parked ${entry.table} ${entry.rowId}: ${reason}`);
+}
+
+/** How often a specific row's push failed (non-transient, non-ownership) -
+    the counter that decides parking via shouldPark. */
+async function bumpAttempts(table: OutboxTable, rowId: string): Promise<number> {
+  const counts = ((await meta.get('pushAttempts'))?.value as Record<string, number> | undefined) ?? {};
+  const key = `${table}:${rowId}`;
+  counts[key] = (counts[key] ?? 0) + 1;
+  await meta.put({ key: 'pushAttempts', value: counts });
+  return counts[key];
+}
+
+/** "Try again": everything parked goes back into the outbox and a sync
+    cycle runs. Counters reset so the rows get a full set of fresh chances. */
+export async function retryParked(): Promise<void> {
+  const parked = await readParked();
+  if (parked.length === 0) return;
+  await outbox.bulkAdd(unparkPlan(parked));
+  await meta.delete('parked');
+  await meta.delete('pushAttempts');
+  await syncNow();
 }
 
 // The sharing tables (item_prefs, shares) are OPTIONAL server furniture:
@@ -145,15 +201,22 @@ function markSharing(ready: boolean): void {
     tables. Polled while the panel is open. */
 export async function syncStatus(): Promise<{
   pending: number;
+  parked: number;
   lastOk: number | null;
+  lastPullOk: number | null;
   signedIn: boolean;
-  lastError: string | null;
+  lastError: SyncErrorInfo | null;
   sharingReady: boolean;
 }> {
-  const pending = await outbox.count();
+  // when the sharing tables are missing, prefs entries wait by design -
+  // counting them would make the number lie about real unsynced work
+  const pending = sharingReady
+    ? await outbox.count()
+    : await outbox.where('table').anyOf('items', 'categories').count();
+  const parked = (await readParked()).length;
   const lastOk = ((await meta.get('lastSyncOk'))?.value as number | undefined) ?? null;
-  const lastError = ((await meta.get('lastSyncError'))?.value as string | undefined) ?? null;
-  return { pending, lastOk, signedIn: session !== null, lastError, sharingReady };
+  const lastPullOk = ((await meta.get('lastPullOk'))?.value as number | undefined) ?? null;
+  return { pending, parked, lastOk, lastPullOk, signedIn: session !== null, lastError: await readLastError(), sharingReady };
 }
 
 const updatedAtOf = (data: Item | Category | ItemPrefs): number =>
@@ -208,7 +271,22 @@ async function healForeignRow(table: 'items' | 'categories', oldId: string): Pro
   const owner = session?.user.id ?? 'local';
   if (table === 'categories') {
     const cat = await db.categories.get(oldId);
-    if (!cat || cat.system) return false; // the Pool is per-user; never re-key it
+    if (!cat) return false;
+    if (cat.system) {
+      // A Pool wearing a foreign identity (old account's id, or a stale
+      // meta.owner). Refusing left sync red forever - instead fold it into
+      // OUR canonical pool: items move over, the foreign row is removed
+      // locally without a tombstone (it was never ours server-side).
+      const want = `pool-${owner}`;
+      if (oldId === want) return false; // our own canonical id rejected: park it
+      await meta.put({ key: 'owner', value: owner }); // heal a stale owner mark too
+      const canonical = await db.categories.get(want);
+      if (!canonical) await db.categories.put({ ...cat, id: want });
+      await db.items.where('categoryId').equals(oldId).modify({ categoryId: want });
+      await withRemote(() => db.categories.delete(oldId));
+      console.warn('[sync] folded foreign pool', oldId, '->', want);
+      return true;
+    }
     const newId = uid();
     await db.categories.put({ ...cat, id: newId });
     await db.items.where('categoryId').equals(oldId).modify({ categoryId: newId });
@@ -239,6 +317,9 @@ export async function pushOutbox(): Promise<void> {
     if (entries.length === 0) return;
     const me = session.user.id;
     const owners = await sharedListOwners();
+    // one shares refresh per push cycle, on the first ownership error -
+    // a stale local share entry is a root cause worth ruling out first
+    let sharesRefreshed = false;
     // collapse to one action per row
     const latest = new Map<string, (typeof entries)[number]>();
     for (const e of entries) latest.set(`${e.table}:${e.rowId}`, e);
@@ -304,40 +385,76 @@ export async function pushOutbox(): Promise<void> {
           continue;
         }
         if ((table === 'items' || table === 'categories') && isOwnershipError(error)) {
-          // some row id in this batch belongs to another account (old-id
-          // data that re-entered this one). Find the offenders one by one
-          // and give them a fresh identity of our own - self-healing.
+          // Some row id in this batch belongs to another account. First
+          // refresh the shares cache once - a stale accepted-share entry
+          // makes us push the WRONG user_id, and that alone explains an
+          // ownership rejection. Then retry rows one by one, self-heal the
+          // real foreigners, and PARK what cannot heal (it stays intact
+          // locally; retrying it forever only keeps sync red).
+          if (!sharesRefreshed) {
+            sharesRefreshed = true;
+            await pullShares();
+            const fresh = await sharedListOwners();
+            owners.clear();
+            for (const [k, v] of fresh) owners.set(k, v);
+          }
           let healed = 0;
-          let stuck = 0;
           for (const row of rows) {
+            // recompute ownership from the refreshed cache before retrying
+            if (!row.deleted) {
+              row.user_id =
+                table === 'items'
+                  ? (owners.get((row.data as Item).categoryId) ?? me)
+                  : (owners.get(row.id) ?? me);
+            }
             const single = await supabase.from(serverTable(table)).upsert([row], { onConflict: 'id' });
-            if (single.error && isOwnershipError(single.error)) {
+            if (!single.error) continue;
+            const entry = latest.get(`${table}:${row.id}`);
+            const base = {
+              table,
+              rowId: row.id,
+              deleted: row.deleted,
+              at: entry?.at ?? row.updated_at,
+              ...(entry?.categoryId ? { categoryId: entry.categoryId } : {}),
+            };
+            if (isOwnershipError(single.error)) {
+              if (row.deleted) {
+                // a tombstone for a row that was never ours server-side is
+                // a no-op - drop it silently instead of parking noise
+                console.warn('[sync] dropped foreign tombstone', table, row.id);
+                continue;
+              }
               try {
                 if (await healForeignRow(table, row.id)) {
                   healed += 1;
                 } else {
-                  // healForeignRow declined (row already gone, or it's the
-                  // system Pool) - this entry cannot heal itself; drop the
-                  // stale outbox slice for THIS row only, do not spin on it
-                  stuck += 1;
-                  noteFailure(`push ${serverTable(table)} ${row.id}: ownership conflict, could not self-heal (${single.error.message})`);
+                  // heal declined (row gone, or unhealable identity) - it
+                  // would decline identically forever: park it
+                  await park(base, `ownership: ${single.error.message.slice(0, 200)}`);
                 }
               } catch (healErr) {
                 // never let a heal bug silently break the whole sync cycle
-                stuck += 1;
-                noteFailure(`heal ${serverTable(table)} ${row.id} threw: ${String(healErr).slice(0, 200)}`);
+                await park(base, `heal threw: ${String(healErr).slice(0, 200)}`);
               }
-            } else if (single.error) {
-              console.warn('[sync] push failed', table, row.id, single.error.message);
+            } else if (isTransientError(single.error.message)) {
+              // network-ish: keep it queued, a later cycle fixes this
+              await outbox.add(base);
               noteFailure(`push ${serverTable(table)}: ${single.error.message}`);
+            } else {
+              const attempts = await bumpAttempts(table, row.id);
+              if (shouldPark('push-error', attempts, false)) {
+                await park(base, single.error.message.slice(0, 200));
+              } else {
+                await outbox.add(base); // re-queue for a few more tries
+                noteFailure(`push ${serverTable(table)}: ${single.error.message}`);
+              }
             }
           }
-          await outbox.bulkDelete(tableSeqs); // healed/stuck rows re-queue or are dropped, never retried verbatim
+          await outbox.bulkDelete(tableSeqs); // survivors were explicitly re-queued above
           if (healed) {
             console.warn(`[sync] healed ${healed} foreign ${table} row(s)`);
             onRemoteChange?.(); // ids changed under the UI - reload state
           }
-          if (stuck) cycleFailed = true; // surfaced via noteFailure above; do not silently call this cycle clean
           continue;
         }
         console.warn('[sync] push failed', table, error.message);
@@ -346,6 +463,11 @@ export async function pushOutbox(): Promise<void> {
       }
       if (table === 'prefs') markSharing(true);
       await outbox.bulkDelete(tableSeqs);
+      // a clean push wipes this table's failure counters - the next error
+      // starts a fresh streak instead of inheriting an old one
+      const counts = ((await meta.get('pushAttempts'))?.value as Record<string, number> | undefined) ?? {};
+      const kept = Object.fromEntries(Object.entries(counts).filter(([k]) => !k.startsWith(`${table}:`)));
+      if (Object.keys(kept).length !== Object.keys(counts).length) await meta.put({ key: 'pushAttempts', value: kept });
     }
   } finally {
     pushing = false;
@@ -489,7 +611,12 @@ export async function pullChanges(): Promise<boolean> {
   }
   // advance the watermark only when the core tables pulled clean, so a
   // failed pull is retried from the same spot instead of skipping rows
-  if (coreOk) await meta.put({ key: 'lastPull', value: maxSeen });
+  if (coreOk) {
+    await meta.put({ key: 'lastPull', value: maxSeen });
+    // honest freshness: the device DID hear the server, even if some push
+    // is stuck - the panel prefers this over a scary "never synced"
+    await meta.put({ key: 'lastPullOk', value: Date.now() });
+  }
 
   // sharing extras - each guarded, none may take the pull down
   try {

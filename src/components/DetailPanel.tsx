@@ -18,6 +18,7 @@ import { useSeder, childrenOf } from '../lib/store';
 import { analyzeMove, itemState } from '../lib/nextMove';
 import { dirProps } from '../lib/rtl';
 import { t, getLang } from '../lib/i18n';
+import { gcalRenderUrl, icsContent } from '../lib/gcal';
 import ItemRow from './ItemRow';
 import './detail.css';
 
@@ -189,6 +190,43 @@ export default function DetailPanel({ itemId }: { itemId: string }) {
               </label>
             )}
           </div>
+
+          {/* Deadline -> calendar, zero setup: the GCal editor opens with
+              the day prefilled (drop it on a slot there to time-block);
+              the .ics file serves Apple Calendar and everything else. */}
+          {item.due !== null && (
+            <div className="detail-calendar">
+              <a
+                className="detail-calendar-link pressable"
+                href={gcalRenderUrl(item, window.location.origin)!}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <svg className="icon" aria-hidden="true">
+                  <use href={`${icons}#icon-calendar`} />
+                </svg>
+                {t('gcal_add')}
+              </a>
+              <button
+                className="detail-calendar-link pressable"
+                onClick={() => {
+                  const ics = icsContent(item);
+                  if (!ics) return;
+                  const url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'seder-task.ics';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                <svg className="icon" aria-hidden="true">
+                  <use href={`${icons}#icon-download`} />
+                </svg>
+                {t('ics_download')}
+              </button>
+            </div>
+          )}
 
           <section className="detail-subitems">
             {kids.map((k) => (

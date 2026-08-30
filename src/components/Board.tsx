@@ -65,7 +65,7 @@ function NewListGhost({ onAdd }: { onAdd: (name: string) => void }) {
 }
 
 export default function Board() {
-  const { categories, addCategory, listView, setListView } = useSeder();
+  const { categories, addCategory, listView, setListView, note } = useSeder();
   const ghost = <NewListGhost onAdd={(name) => void addCategory(name)} />;
   const modeIdx = Math.max(0, MODES.findIndex((m) => m.id === listView));
   const mode = MODES[modeIdx];
@@ -77,7 +77,11 @@ export default function Board() {
         className="board-viewswitch pressable tooltip"
         data-tooltip={`${t(mode.label)} · ${t('view_cycle')}`}
         aria-label={`${t(mode.label)} · ${t('view_cycle')}`}
-        onClick={() => setListView(next.id)}
+        onClick={() => {
+          setListView(next.id);
+          // the glyph alone is mute on first use - say the new view's name
+          note(t(next.label), 1400);
+        }}
       >
         <mode.Icon className="icon" />
       </button>

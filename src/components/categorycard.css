@@ -197,6 +197,21 @@
     opacity: 1;
   }
 }
+/* Touch: the header is a tap target (action sheet) AND a long-press lift
+   (reorder) - never a text selection or a callout menu. pan-y keeps the
+   page scrolling until a lift actually happens; while a ghost is up the
+   gesture belongs to the drag (mirror of itemrow.css's row rules). */
+@media (hover: none) and (pointer: coarse) {
+  .category-card-header {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: pan-y;
+  }
+  :root:has(.touchdrag-ghost) .category-card-header {
+    touch-action: none;
+  }
+}
 
 /* --- Rename input: the title, editable in place --- */
 .category-card-rename {

@@ -89,22 +89,36 @@ for (const c of cases) {
   if (await shareBtn.count()) {
     const header = p.locator('.category-card:not([data-system]) .category-card-header').first();
     if (!c.mobile) await header.hover();
-    // phone narrow grids hide the tools at rest; a header tap reveals them
-    // (CategoryCard's tools-open) - carousel keeps them out, tap is harmless
-    if (c.mobile) {
+    const toolsVisible = await shareBtn.isVisible();
+    if (c.mobile && !toolsVisible) {
+      // phone grids: the header tools are gone by design - a header tap
+      // opens the card action sheet, and share lives inside it
       await header.tap();
-      await p.waitForTimeout(120);
+      await p.waitForTimeout(200);
+      const sheet = p.locator('.cardsheet');
+      if ((await sheet.count()) === 0) { breaches++; console.log(`[${c.name}] card sheet did not open`); }
+      else {
+        const r = await sheet.boundingBox();
+        if (r && (r.x < -0.5 || r.x + r.width > c.vw + 0.5)) { breaches++; console.log(`[${c.name}] card sheet crosses the viewport: ${Math.round(r.x)}..${Math.round(r.x + r.width)} vs 0..${c.vw}`); }
+        const shareRow = sheet.locator('.cardsheet-row', { hasText: undefined }).nth(1); // rename, then share
+        await shareRow.tap().catch(() => {});
+        await p.waitForTimeout(150);
+        if ((await p.locator('.cardsheet-share').count()) === 0) { breaches++; console.log(`[${c.name}] sheet share flow did not open`); }
+        await p.locator('.cardsheet-scrim').click({ force: true }).catch(() => {});
+        await p.waitForTimeout(100);
+      }
+    } else {
+      await shareBtn.click({ force: c.mobile === true });
+      await p.waitForTimeout(100);
+      const pop = p.locator('.share-popover');
+      if (await pop.count()) {
+        const r = await pop.boundingBox();
+        const vw = c.vw;
+        if (r && (r.x < 0 || r.x + r.width > vw + 0.5)) { breaches++; console.log(`[${c.name}] share popover crosses the viewport: ${Math.round(r.x)}..${Math.round(r.x + r.width)} vs 0..${vw}`); }
+      } else { breaches++; console.log(`[${c.name}] share popover did not open`); }
+      await p.keyboard.press('Escape');
+      await p.locator('.colorpicker-scrim').click({ force: true }).catch(() => {});
     }
-    await shareBtn.click({ force: c.mobile === true });
-    await p.waitForTimeout(100);
-    const pop = p.locator('.share-popover');
-    if (await pop.count()) {
-      const r = await pop.boundingBox();
-      const vw = c.vw;
-      if (r && (r.x < 0 || r.x + r.width > vw + 0.5)) { breaches++; console.log(`[${c.name}] share popover crosses the viewport: ${Math.round(r.x)}..${Math.round(r.x + r.width)} vs 0..${vw}`); }
-    } else { breaches++; console.log(`[${c.name}] share popover did not open`); }
-    await p.keyboard.press('Escape');
-    await p.locator('.colorpicker-scrim').click({ force: true }).catch(() => {});
   }
 
   // shared state: plant an accepted share, reload, the two-person mark must

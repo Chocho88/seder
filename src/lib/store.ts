@@ -11,6 +11,7 @@ import { db, uid, ownerId, ensurePrefs } from './db';
 import { seedIfEmpty } from './seed';
 import { t, tfmt } from './i18n';
 import { onRemote, onConflict, onSyncError, shareToRow, isMissingTableError, beaconBoot } from './sync';
+import { whenSessionSettled } from './auth';
 import { startSelfUpdate } from './update';
 import { parseMarkdownTasks } from './mdImport';
 import { supabase } from './supabase';
@@ -128,7 +129,7 @@ interface SederState {
 
   // Undo: full state snapshots, restored by Cmd+Z or toast
   undoStack: { items: Item[]; categories: Category[]; prefs: ItemPrefs[] }[];
-  toast: { label: string; at: number; undoable?: boolean } | null;
+  toast: { label: string; at: number; undoable?: boolean; ttl?: number } | null;
 
   suggestionsOn: boolean; // settings: morning suggestions visibility
   logbookOpen: boolean;
@@ -196,6 +197,8 @@ interface SederState {
 
   undo(): Promise<void>;
   clearToast(): void;
+  /** Fire a transient info toast (no undo). ttl in ms, default 5000. */
+  note(label: string, ttl?: number): void;
 
   setSuggestionsOn(on: boolean): void;
   setLogbookOpen(open: boolean): void;
@@ -367,9 +370,12 @@ export const useSeder = create<SederState>((set, get) => {
     void navigator.storage?.persist?.().then((granted) => {
       void db.meta.put({ key: 'storagePersisted', value: granted });
     });
-    // every production load announces itself (~4s in, once the session
-    // has had time to resolve) - see beaconBoot in sync.ts
-    window.setTimeout(() => void beaconBoot(), 4000);
+    // every production load announces itself once the first session pass
+    // (and its outbox seeding) has settled, capped at 8s - so the boot
+    // beacon's pending count is real, never a pre-seed zero
+    void Promise.race([whenSessionSettled, new Promise((res) => window.setTimeout(res, 8000))]).then(
+      () => void beaconBoot(),
+    );
     // ...and keeps itself on the newest version (update.ts)
     startSelfUpdate(() => get().dragItemId !== null);
   },
@@ -1010,6 +1016,10 @@ export const useSeder = create<SederState>((set, get) => {
 
   clearToast() {
     set({ toast: null });
+  },
+
+  note(label, ttl) {
+    set({ toast: { label, at: Date.now(), undoable: false, ...(ttl ? { ttl } : {}) } });
   },
 
   setSuggestionsOn(on) {

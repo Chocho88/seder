@@ -10,7 +10,7 @@ export default function Toast() {
 
   useEffect(() => {
     if (!toast) return;
-    const id = window.setTimeout(clearToast, 5000);
+    const id = window.setTimeout(clearToast, toast.ttl ?? 5000);
     return () => window.clearTimeout(id);
   }, [toast, clearToast]);
 

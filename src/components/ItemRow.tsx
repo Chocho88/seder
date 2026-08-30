@@ -232,8 +232,9 @@ export default function ItemRow({
               {kids.filter((k) => k.done).length}/{kids.length}
             </span>
           )}
-          {/* depth mark: this row has more inside (hover previews, click opens) */}
-          {hasDepth && kids.length === 0 && <span className="item-depth" aria-hidden />}
+          {/* depth mark: this row has more inside (hover previews, click
+              opens) - also when children exist but are collapsed (leaf) */}
+          {hasDepth && (kids.length === 0 || leaf) && <span className="item-depth" aria-hidden />}
         </span>
 
         {/* hover actions: icons only, tooltips carry the words */}
