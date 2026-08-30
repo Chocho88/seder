@@ -10,8 +10,7 @@ import { create } from 'zustand';
 import { db, uid, ownerId, ensurePrefs } from './db';
 import { seedIfEmpty } from './seed';
 import { t, tfmt } from './i18n';
-import { onRemote, onConflict, onSyncError, shareToRow, isMissingTableError, beaconBoot } from './sync';
-import { whenSessionSettled } from './auth';
+import { onRemote, onConflict, onSyncError, shareToRow, isMissingTableError } from './sync';
 import { startSelfUpdate } from './update';
 import { parseMarkdownTasks } from './mdImport';
 import { supabase } from './supabase';
@@ -370,12 +369,6 @@ export const useSeder = create<SederState>((set, get) => {
     void navigator.storage?.persist?.().then((granted) => {
       void db.meta.put({ key: 'storagePersisted', value: granted });
     });
-    // every production load announces itself once the first session pass
-    // (and its outbox seeding) has settled, capped at 8s - so the boot
-    // beacon's pending count is real, never a pre-seed zero
-    void Promise.race([whenSessionSettled, new Promise((res) => window.setTimeout(res, 8000))]).then(
-      () => void beaconBoot(),
-    );
     // ...and keeps itself on the newest version (update.ts)
     startSelfUpdate(() => get().dragItemId !== null);
   },

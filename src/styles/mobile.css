@@ -67,10 +67,17 @@
   .mobile-canvas .board-gallery .category-card-tools {
     display: none;
   }
-  /* the sub-count (0/3) is the widest row signal; on narrow grid cards
-     the title needs that width more (depth still shows via the dot) */
+  /* Grid rows are PREVIEWS (Keep's law): checkbox + title + what's
+     urgent (due flag, pin). The context-menu handle, the depth bars and
+     the sub-count all gave ~50px of a ~170px card to chrome and crushed
+     titles to two letters - everything they offer lives one tap away in
+     the item's detail panel. Carousel's full-width rows keep them. */
   .mobile-canvas .board-bento .item-kidcount,
-  .mobile-canvas .board-gallery .item-kidcount {
+  .mobile-canvas .board-gallery .item-kidcount,
+  .mobile-canvas .board-bento .item-more,
+  .mobile-canvas .board-gallery .item-more,
+  .mobile-canvas .board-bento .item-depth,
+  .mobile-canvas .board-gallery .item-depth {
     display: none;
   }
   /* Gallery on a phone: same Keep rhythm as bento - two columns is set

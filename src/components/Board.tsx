@@ -6,7 +6,7 @@
 // wears the current view's glyph and cycles bento → gallery → carousel.
 // Swipe lives inside Carousel, where it is the whole point.
 
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import icons from '../../vendor/design-system/icons.svg';
 import { BentoIcon, CarouselIcon, GalleryIcon } from './SederIcons';
 import { useSeder } from '../lib/store';
@@ -71,13 +71,29 @@ export default function Board() {
   const mode = MODES[modeIdx];
   const next = MODES[(modeIdx + 1) % MODES.length];
 
+  // Cycling swaps a section whose height changes wildly (a tall bento
+  // grid vs one carousel row). When the page shrinks under the current
+  // scroll position the browser clamps it and the view "teleports" to a
+  // different part of the app. Anchor the switch button instead: note
+  // where it sits before the swap, and put it back before paint.
+  const switchRef = useRef<HTMLButtonElement>(null);
+  const anchorTop = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (anchorTop.current === null || !switchRef.current) return;
+    const delta = switchRef.current.getBoundingClientRect().top - anchorTop.current;
+    anchorTop.current = null;
+    if (delta) window.scrollBy(0, delta);
+  }, [listView]);
+
   return (
     <div className="board">
       <button
+        ref={switchRef}
         className="board-viewswitch pressable tooltip"
         data-tooltip={`${t(mode.label)} · ${t('view_cycle')}`}
         aria-label={`${t(mode.label)} · ${t('view_cycle')}`}
         onClick={() => {
+          anchorTop.current = switchRef.current?.getBoundingClientRect().top ?? null;
           setListView(next.id);
           // the glyph alone is mute on first use - say the new view's name
           note(t(next.label), 1400);

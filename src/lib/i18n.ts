@@ -152,6 +152,8 @@ const DICT: Record<string, { en: string; he: string }> = {
   sharing_not_installed: { en: 'Sharing is not set up on the server yet (the SQL file was not run). Lists and tasks still sync.', he: 'השיתוף עוד לא הותקן בשרת (קובץ ה-SQL לא הורץ). רשימות ומשימות ממשיכות להסתנכרן.' },
   sync_error_detail: { en: 'Last error', he: 'שגיאה אחרונה' },
   sync_issue: { en: 'Some changes have not synced yet - will keep trying', he: 'חלק מהשינויים לא הסתנכרנו - ננסה שוב' },
+  sync_running: { en: 'Syncing…', he: 'מסתנכרן…' },
+  sync_done: { en: 'Synced', he: 'סונכרן' },
   sync_details: { en: 'Details', he: 'פרטים' },
   sync_parked_n: { en: 'changes set aside, safe on this device', he: 'שינויים בצד, שמורים במכשיר הזה' },
   sync_parked_retry: { en: 'Try again', he: 'לנסות שוב' },

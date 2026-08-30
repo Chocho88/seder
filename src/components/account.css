@@ -205,6 +205,21 @@
   color: var(--text-primary);
   border-color: var(--border-color-strong);
 }
+/* Sync Now while running: the icon itself turns, unmistakably alive */
+.account-spin {
+  animation: account-spin 0.9s linear infinite;
+}
+@keyframes account-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .account-spin {
+    animation: none;
+    opacity: 0.5;
+  }
+}
 
 /* Phone: the panel becomes a full-width sheet under the header, whichever
    side its button sits on (fixes the off-screen cutoff on iPhone). */

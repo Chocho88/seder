@@ -26,7 +26,13 @@ export default function CarouselBoard({ categories, ghost }: { categories: Categ
     if (skippedInitial.current) return;
     skippedInitial.current = true;
     if (categories[0]?.system && categories.length > 1) {
+      // scrollIntoView may also scroll the PAGE vertically (block:
+      // 'nearest' is not a no-op when the track sits off-screen) - that
+      // yanked the viewport when cycling into carousel. Undo the page
+      // part; keep only the track's own horizontal scroll.
+      const y = window.scrollY;
       cardRefs.current[1]?.scrollIntoView({ behavior: 'auto', inline: 'center', block: 'nearest' });
+      window.scrollTo({ top: y });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -27,6 +27,9 @@ export default function AccountMenu() {
     sharingReady: boolean;
   } | null>(null);
   const [probe, setProbe] = useState<'idle' | 'running' | { ok: boolean; ms?: number; error?: string }>('idle');
+  // Sync Now must visibly DO something: spin while running, land on a
+  // clear verdict for a moment, then return to rest.
+  const [manualSync, setManualSync] = useState<'idle' | 'running' | 'ok' | 'fail'>('idle');
   const ref = useRef<HTMLDivElement>(null);
 
   const sendLink = async () => {
@@ -92,7 +95,12 @@ export default function AccountMenu() {
       ? `${status.pending} ${t('sync_pending_n')}`
       : vm!.line === 'fresh'
         ? `${t('sync_all_clear')} · ${t('last_synced')} ${new Intl.DateTimeFormat(lang === 'he' ? 'he-IL' : 'en-US', { hour: 'numeric', minute: '2-digit' }).format(vm!.freshAt!)}`
-        : t('never_synced');
+        : vm!.errorVisible
+          ? t('never_synced')
+          : // no freshness stamp yet but nothing wrong either: the first
+            // cycle on this build is simply still in flight - say so
+            // instead of the alarming "never synced on this device"
+            t('sync_running');
 
   return (
     <div className="account" ref={ref}>
@@ -141,11 +149,33 @@ export default function AccountMenu() {
                 )}
                 {status && !status.sharingReady && <div className="account-sync-note">{t('sharing_not_installed')}</div>}
               </div>
-              <button className="settings-action pressable" onClick={() => void syncNow().then(() => syncStatus().then(setStatus))}>
-                <svg className="icon icon-sm">
+              <button
+                className="settings-action pressable"
+                disabled={manualSync === 'running'}
+                onClick={async () => {
+                  if (manualSync === 'running') return;
+                  setManualSync('running');
+                  try {
+                    await syncNow();
+                    const s = await syncStatus();
+                    setStatus(s);
+                    setManualSync(s.lastError ? 'fail' : 'ok');
+                  } catch {
+                    setManualSync('fail');
+                  }
+                  window.setTimeout(() => setManualSync('idle'), 2200);
+                }}
+              >
+                <svg className={`icon icon-sm${manualSync === 'running' ? ' account-spin' : ''}`}>
                   <use href={`${icons}#icon-download`} />
                 </svg>
-                {t('sync_now')}
+                {manualSync === 'running'
+                  ? t('sync_running')
+                  : manualSync === 'ok'
+                    ? `${t('sync_done')} ✓`
+                    : manualSync === 'fail'
+                      ? t('sync_check_fail')
+                      : t('sync_now')}
               </button>
               <button
                 className="settings-action pressable"

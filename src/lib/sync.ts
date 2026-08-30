@@ -85,45 +85,6 @@ export function onSyncError(cb: () => void): void {
   onSyncFailure = cb;
 }
 
-// Diagnostic heartbeat: whenever the sync state CHANGES (a new error, or a
-// recovery to clean), production builds report build+error+pending to
-// /api/beacon - readable in the deployment's runtime logs. Task content
-// never leaves the device through this path.
-let lastBeaconKey = '';
-function sendBeacon(error: string | null, event = 'sync'): void {
-  if (typeof location === 'undefined' || !/vercel\.app$/.test(location.hostname)) return;
-  const key = `${event}:${error ?? 'ok'}`;
-  if (key === lastBeaconKey) return;
-  lastBeaconKey = key;
-  void (async () => {
-    try {
-      const pending = await outbox.count();
-      const parked = (((await meta.get('parked'))?.value as ParkedEntry[] | undefined) ?? []).length;
-      await fetch('/api/beacon', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event,
-          build: typeof __SEDER_BUILD__ !== 'undefined' ? __SEDER_BUILD__ : 'dev',
-          uid: session?.user.id ?? 'anon',
-          signedIn: session !== null,
-          pending,
-          parked,
-          sharingReady,
-          error,
-        }),
-      });
-    } catch {}
-  })();
-}
-
-/** Every page load announces itself once - signed-in OR NOT. A signed-out
-    load was previously invisible (sync never runs without a session), and
-    invisible is indistinguishable from "never opened the app". */
-export async function beaconBoot(): Promise<void> {
-  sendBeacon((await readLastError())?.detail ?? null, 'boot');
-}
-
 /** lastSyncError, structured. A legacy pre-stamped string written by an
     older build parses to null and is deleted on sight - the frozen
     "[20:38] push categories: ..." line dies right here. */
@@ -138,7 +99,6 @@ async function readLastError(): Promise<SyncErrorInfo | null> {
 function noteFailure(detail: string): void {
   cycleFailed = true;
   void meta.put({ key: 'lastSyncError', value: { at: Date.now(), detail } satisfies SyncErrorInfo });
-  sendBeacon(detail);
   if (!failureToasted) {
     failureToasted = true;
     onSyncFailure?.();
@@ -157,7 +117,6 @@ async function park(entry: Omit<ParkedEntry, 'parkedAt' | 'attempts' | 'reason'>
   const merged = mergeParked(await readParked(), [{ ...entry, reason, parkedAt: Date.now(), attempts: 1 }]);
   await meta.put({ key: 'parked', value: merged });
   console.warn('[sync] parked', entry.table, entry.rowId, reason);
-  sendBeacon(`parked ${entry.table} ${entry.rowId}: ${reason}`);
 }
 
 /** How often a specific row's push failed (non-transient, non-ownership) -
@@ -720,6 +679,5 @@ export async function syncNow(): Promise<void> {
     failureToasted = false; // a clean cycle re-arms the one-shot warning
     await meta.put({ key: 'lastSyncOk', value: Date.now() });
     await meta.delete('lastSyncError');
-    sendBeacon(null); // report recovery once, so the logs show the all-clear
   }
 }

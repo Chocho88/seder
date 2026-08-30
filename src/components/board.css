@@ -286,6 +286,8 @@
   background: var(--surface-sunken);
   color: var(--text-secondary);
   cursor: pointer;
+  /* rapid taps must cycle views, never arm iOS's double-tap zoom */
+  touch-action: manipulation;
 }
 .board-viewswitch:hover {
   color: var(--text-primary);
