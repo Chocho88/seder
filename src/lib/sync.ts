@@ -328,146 +328,158 @@ export async function pushOutbox(): Promise<void> {
       // successful upsert drains exactly its own outbox slice - one failing
       // table must never hold the others' entries hostage
       const tableSeqs = entries.filter((e) => e.table === table).map((e) => e.seq!);
-      const rows: Row[] = [];
-      for (const e of latest.values()) {
-        if (e.table !== table) continue;
-        if (e.deleted) {
-          // item tombstones keep their categoryId so a member's delete of a
-          // shared item passes the membership policy
-          const catId = table === 'items' ? e.categoryId : undefined;
-          rows.push({
-            id: e.rowId,
-            user_id: (catId && owners.get(catId)) || me,
-            data: { id: e.rowId, ...(catId ? { categoryId: catId } : {}) } as any,
-            updated_at: e.at,
-            deleted: true,
-            // prefs row ids are '<userId>:<itemId>' - the table needs item_id
-            ...(table === 'prefs' ? { item_id: e.rowId.split(':').slice(1).join(':') } : {}),
-          });
-        } else {
-          const data = await (table === 'items'
-            ? db.items.get(e.rowId)
-            : table === 'categories'
-              ? db.categories.get(e.rowId)
-              : db.prefs.get(e.rowId));
-          if (!data) continue;
-          // rows of a shared list belong to the list owner; my triage never
-          // rides on the shared item row
-          let user_id = me;
-          let payload: Item | Category | ItemPrefs = data;
-          if (table === 'items') {
-            const it = data as Item;
-            user_id = owners.get(it.categoryId) ?? me;
-            payload = neutralizeShared(it);
-          } else if (table === 'categories') {
-            user_id = owners.get((data as Category).id) ?? me;
+      try {
+        const rows: Row[] = [];
+        for (const e of latest.values()) {
+          if (e.table !== table) continue;
+          if (e.deleted) {
+            // item tombstones keep their categoryId so a member's delete of a
+            // shared item passes the membership policy
+            const catId = table === 'items' ? e.categoryId : undefined;
+            rows.push({
+              id: e.rowId,
+              user_id: (catId && owners.get(catId)) || me,
+              data: { id: e.rowId, ...(catId ? { categoryId: catId } : {}) } as any,
+              updated_at: e.at,
+              deleted: true,
+              // prefs row ids are '<userId>:<itemId>' - the table needs item_id
+              ...(table === 'prefs' ? { item_id: e.rowId.split(':').slice(1).join(':') } : {}),
+            });
+          } else {
+            const data = await (table === 'items'
+              ? db.items.get(e.rowId)
+              : table === 'categories'
+                ? db.categories.get(e.rowId)
+                : db.prefs.get(e.rowId));
+            if (!data) continue;
+            // rows of a shared list belong to the list owner; my triage never
+            // rides on the shared item row
+            let user_id = me;
+            let payload: Item | Category | ItemPrefs = data;
+            if (table === 'items') {
+              const it = data as Item;
+              user_id = owners.get(it.categoryId) ?? me;
+              payload = neutralizeShared(it);
+            } else if (table === 'categories') {
+              user_id = owners.get((data as Category).id) ?? me;
+            }
+            rows.push({
+              id: e.rowId,
+              user_id,
+              data: payload,
+              updated_at: Math.max(updatedAtOf(data), e.at),
+              deleted: false,
+              ...(table === 'prefs' ? { item_id: (data as ItemPrefs).itemId } : {}),
+            });
           }
-          rows.push({
-            id: e.rowId,
-            user_id,
-            data: payload,
-            updated_at: Math.max(updatedAtOf(data), e.at),
-            deleted: false,
-            ...(table === 'prefs' ? { item_id: (data as ItemPrefs).itemId } : {}),
-          });
         }
-      }
-      if (rows.length === 0) {
-        if (tableSeqs.length) await outbox.bulkDelete(tableSeqs); // stale entries for vanished rows
-        continue;
-      }
-      const { error } = await supabase.from(serverTable(table)).upsert(rows, { onConflict: 'id' });
-      if (error) {
-        if (table === 'prefs' && isMissingTableError(error)) {
-          // the sharing migration has not been applied - keep the entries
-          // for the day it is, but this is NOT a sync failure
-          markSharing(false);
+        if (rows.length === 0) {
+          if (tableSeqs.length) await outbox.bulkDelete(tableSeqs); // stale entries for vanished rows
           continue;
         }
-        if ((table === 'items' || table === 'categories') && isOwnershipError(error)) {
-          // Some row id in this batch belongs to another account. First
-          // refresh the shares cache once - a stale accepted-share entry
-          // makes us push the WRONG user_id, and that alone explains an
-          // ownership rejection. Then retry rows one by one, self-heal the
-          // real foreigners, and PARK what cannot heal (it stays intact
-          // locally; retrying it forever only keeps sync red).
-          if (!sharesRefreshed) {
-            sharesRefreshed = true;
-            await pullShares();
-            const fresh = await sharedListOwners();
-            owners.clear();
-            for (const [k, v] of fresh) owners.set(k, v);
+        const { error } = await supabase.from(serverTable(table)).upsert(rows, { onConflict: 'id' });
+        if (error) {
+          if (table === 'prefs' && isMissingTableError(error)) {
+            // the sharing migration has not been applied - keep the entries
+            // for the day it is, but this is NOT a sync failure
+            markSharing(false);
+            continue;
           }
-          let healed = 0;
-          for (const row of rows) {
-            // recompute ownership from the refreshed cache before retrying
-            if (!row.deleted) {
-              row.user_id =
-                table === 'items'
-                  ? (owners.get((row.data as Item).categoryId) ?? me)
-                  : (owners.get(row.id) ?? me);
+          if ((table === 'items' || table === 'categories') && isOwnershipError(error)) {
+            // Some row id in this batch belongs to another account. First
+            // refresh the shares cache once - a stale accepted-share entry
+            // makes us push the WRONG user_id, and that alone explains an
+            // ownership rejection. Then retry rows one by one, self-heal the
+            // real foreigners, and PARK what cannot heal (it stays intact
+            // locally; retrying it forever only keeps sync red).
+            if (!sharesRefreshed) {
+              sharesRefreshed = true;
+              await pullShares();
+              const fresh = await sharedListOwners();
+              owners.clear();
+              for (const [k, v] of fresh) owners.set(k, v);
             }
-            const single = await supabase.from(serverTable(table)).upsert([row], { onConflict: 'id' });
-            if (!single.error) continue;
-            const entry = latest.get(`${table}:${row.id}`);
-            const base = {
-              table,
-              rowId: row.id,
-              deleted: row.deleted,
-              at: entry?.at ?? row.updated_at,
-              ...(entry?.categoryId ? { categoryId: entry.categoryId } : {}),
-            };
-            if (isOwnershipError(single.error)) {
-              if (row.deleted) {
-                // a tombstone for a row that was never ours server-side is
-                // a no-op - drop it silently instead of parking noise
-                console.warn('[sync] dropped foreign tombstone', table, row.id);
-                continue;
+            let healed = 0;
+            for (const row of rows) {
+              // recompute ownership from the refreshed cache before retrying
+              if (!row.deleted) {
+                row.user_id =
+                  table === 'items'
+                    ? (owners.get((row.data as Item).categoryId) ?? me)
+                    : (owners.get(row.id) ?? me);
               }
-              try {
-                if (await healForeignRow(table, row.id)) {
-                  healed += 1;
-                } else {
-                  // heal declined (row gone, or unhealable identity) - it
-                  // would decline identically forever: park it
-                  await park(base, `ownership: ${single.error.message.slice(0, 200)}`);
+              const single = await supabase.from(serverTable(table)).upsert([row], { onConflict: 'id' });
+              if (!single.error) continue;
+              const entry = latest.get(`${table}:${row.id}`);
+              const base = {
+                table,
+                rowId: row.id,
+                deleted: row.deleted,
+                at: entry?.at ?? row.updated_at,
+                ...(entry?.categoryId ? { categoryId: entry.categoryId } : {}),
+              };
+              if (isOwnershipError(single.error)) {
+                if (row.deleted) {
+                  // a tombstone for a row that was never ours server-side is
+                  // a no-op - drop it silently instead of parking noise
+                  console.warn('[sync] dropped foreign tombstone', table, row.id);
+                  continue;
                 }
-              } catch (healErr) {
-                // never let a heal bug silently break the whole sync cycle
-                await park(base, `heal threw: ${String(healErr).slice(0, 200)}`);
-              }
-            } else if (isTransientError(single.error.message)) {
-              // network-ish: keep it queued, a later cycle fixes this
-              await outbox.add(base);
-              noteFailure(`push ${serverTable(table)}: ${single.error.message}`);
-            } else {
-              const attempts = await bumpAttempts(table, row.id);
-              if (shouldPark('push-error', attempts, false)) {
-                await park(base, single.error.message.slice(0, 200));
-              } else {
-                await outbox.add(base); // re-queue for a few more tries
+                try {
+                  if (await healForeignRow(table, row.id)) {
+                    healed += 1;
+                  } else {
+                    // heal declined (row gone, or unhealable identity) - it
+                    // would decline identically forever: park it
+                    await park(base, `ownership: ${single.error.message.slice(0, 200)}`);
+                  }
+                } catch (healErr) {
+                  // never let a heal bug silently break the whole sync cycle
+                  await park(base, `heal threw: ${String(healErr).slice(0, 200)}`);
+                }
+              } else if (isTransientError(single.error.message)) {
+                // network-ish: keep it queued, a later cycle fixes this
+                await outbox.add(base);
                 noteFailure(`push ${serverTable(table)}: ${single.error.message}`);
+              } else {
+                const attempts = await bumpAttempts(table, row.id);
+                if (shouldPark('push-error', attempts, false)) {
+                  await park(base, single.error.message.slice(0, 200));
+                } else {
+                  await outbox.add(base); // re-queue for a few more tries
+                  noteFailure(`push ${serverTable(table)}: ${single.error.message}`);
+                }
               }
             }
+            await outbox.bulkDelete(tableSeqs); // survivors were explicitly re-queued above
+            if (healed) {
+              console.warn(`[sync] healed ${healed} foreign ${table} row(s)`);
+              onRemoteChange?.(); // ids changed under the UI - reload state
+            }
+            continue;
           }
-          await outbox.bulkDelete(tableSeqs); // survivors were explicitly re-queued above
-          if (healed) {
-            console.warn(`[sync] healed ${healed} foreign ${table} row(s)`);
-            onRemoteChange?.(); // ids changed under the UI - reload state
-          }
-          continue;
+          console.warn('[sync] push failed', table, error.message);
+          noteFailure(`push ${serverTable(table)}: ${error.message}`);
+          continue; // this table retries later; the others still drain
         }
-        console.warn('[sync] push failed', table, error.message);
-        noteFailure(`push ${serverTable(table)}: ${error.message}`);
-        continue; // this table retries later; the others still drain
+        if (table === 'prefs') markSharing(true);
+        await outbox.bulkDelete(tableSeqs);
+        // a clean push wipes this table's failure counters - the next error
+        // starts a fresh streak instead of inheriting an old one
+        const counts = ((await meta.get('pushAttempts'))?.value as Record<string, number> | undefined) ?? {};
+        const kept = Object.fromEntries(Object.entries(counts).filter(([k]) => !k.startsWith(`${table}:`)));
+        if (Object.keys(kept).length !== Object.keys(counts).length) await meta.put({ key: 'pushAttempts', value: kept });
+      } catch (tableErr) {
+        // ANY exception while processing this table (a thrown network
+        // error, an IndexedDB read failure, anything) must never abort the
+        // whole cycle silently - report it with a fresh timestamp and move
+        // on to the next table. This is what a frozen error banner + a
+        // climbing pending count (evidence from live beacons) looks like
+        // when it's missing: the loop died here before ever reaching the
+        // per-row handling above, so noteFailure was never called again.
+        console.warn('[sync] push threw', table, tableErr);
+        noteFailure(`push ${serverTable(table)} threw: ${String((tableErr as { message?: string })?.message ?? tableErr).slice(0, 200)}`);
       }
-      if (table === 'prefs') markSharing(true);
-      await outbox.bulkDelete(tableSeqs);
-      // a clean push wipes this table's failure counters - the next error
-      // starts a fresh streak instead of inheriting an old one
-      const counts = ((await meta.get('pushAttempts'))?.value as Record<string, number> | undefined) ?? {};
-      const kept = Object.fromEntries(Object.entries(counts).filter(([k]) => !k.startsWith(`${table}:`)));
-      if (Object.keys(kept).length !== Object.keys(counts).length) await meta.put({ key: 'pushAttempts', value: kept });
     }
   } finally {
     pushing = false;
