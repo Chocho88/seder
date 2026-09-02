@@ -56,9 +56,18 @@ db.version(3).stores({
 export const outbox = db.outbox;
 export const meta = db.meta;
 
+// Whoever wants to react to new outbox entries (the sync engine schedules
+// a push-on-write) registers here. db.ts stays below sync.ts in the
+// import graph, so this is a callback seam, not an import.
+let onFlush: (() => void) | null = null;
+export function onOutboxFlush(cb: () => void): void {
+  onFlush = cb;
+}
+
 /** Record that a row changed locally. */
 export async function markDirty(table: OutboxTable, rowId: string, deleted = false): Promise<void> {
   await outbox.add({ table, rowId, deleted, at: Date.now() });
+  onFlush?.();
 }
 
 // Every local write - from any store action - lands in the outbox via Dexie
@@ -83,7 +92,11 @@ function queue(table: OutboxTable, rowId: string, deleted: boolean, categoryId?:
     setTimeout(() => {
       flushScheduled = false;
       const batch = pending.splice(0, pending.length);
-      if (batch.length) void outbox.bulkAdd(batch).catch((e) => console.warn('[outbox]', e));
+      if (batch.length)
+        void outbox
+          .bulkAdd(batch)
+          .then(() => onFlush?.())
+          .catch((e) => console.warn('[outbox]', e));
     }, 0);
   }
 }

@@ -61,13 +61,18 @@ export default function AccountMenu() {
     };
   }, [open]);
 
-  // live sync truth while the panel is open
+  // live sync truth: every 2s while the panel is open, every 5s otherwise
+  // (the button wears a small dot whenever changes are waiting or stuck,
+  // so "is it syncing?" is answerable without opening anything)
   useEffect(() => {
-    if (!open || auth.status !== 'signed-in') return;
+    if (auth.status !== 'signed-in') return;
     let alive = true;
-    const read = () => void syncStatus().then((s) => alive && setStatus(s));
+    const read = () => {
+      if (document.visibilityState === 'hidden') return;
+      void syncStatus().then((s) => alive && setStatus(s));
+    };
     read();
-    const timer = window.setInterval(read, 2000);
+    const timer = window.setInterval(read, open ? 2000 : 5000);
     return () => {
       alive = false;
       window.clearInterval(timer);
@@ -102,6 +107,10 @@ export default function AccountMenu() {
             // instead of the alarming "never synced on this device"
             t('sync_running');
 
+  // the dot: amber while changes wait to leave the device, red when
+  // something is stuck or failing; nothing at all when everything is clean
+  const dot = !status || auth.status !== 'signed-in' ? null : vm!.errorVisible || status.parked > 0 ? 'issue' : status.pending > 0 ? 'busy' : null;
+
   return (
     <div className="account" ref={ref}>
       <button
@@ -116,6 +125,7 @@ export default function AccountMenu() {
             <use href={`${icons}#icon-user`} />
           </svg>
         )}
+        {dot && <span className={`account-dot account-dot-${dot}`} aria-hidden />}
       </button>
       {open && (
         <div className="account-panel">

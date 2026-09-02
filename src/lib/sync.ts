@@ -15,7 +15,7 @@
 //     from this device.
 
 import type { RealtimeChannel, Session } from '@supabase/supabase-js';
-import { db, outbox, meta, withRemote, uid, type OutboxTable } from './db';
+import { db, outbox, meta, withRemote, uid, onOutboxFlush, type OutboxTable } from './db';
 import { isMissingTableError, neutralizeShared, prefsFromItem, type ItemPrefs } from './shareSplit';
 import {
   isTransientError,
@@ -55,6 +55,9 @@ type ShareRow = {
 let session: Session | null = null;
 let channel: RealtimeChannel | null = null;
 let pushing = false;
+// a write that lands while a push is in flight must not wait for the next
+// poll tick: remember it and run one more cycle as soon as this one ends
+let pushQueued = false;
 let onRemoteChange: (() => void) | null = null;
 let onTitleConflict: ((loserTitle: string) => void) | null = null;
 let onSyncFailure: (() => void) | null = null;
@@ -269,7 +272,11 @@ async function healForeignRow(table: 'items' | 'categories', oldId: string): Pro
 
 /** Push every outbox entry to the server, newest state per row. */
 export async function pushOutbox(): Promise<void> {
-  if (!supabase || !session || pushing) return;
+  if (!supabase || !session) return;
+  if (pushing) {
+    pushQueued = true;
+    return;
+  }
   pushing = true;
   try {
     const entries = await outbox.orderBy('seq').toArray();
@@ -442,6 +449,10 @@ export async function pushOutbox(): Promise<void> {
     }
   } finally {
     pushing = false;
+    if (pushQueued) {
+      pushQueued = false;
+      scheduleSync(0);
+    }
   }
 }
 
@@ -668,6 +679,25 @@ export async function probeRoundTrip(): Promise<{ ok: boolean; ms?: number; erro
   if ((back.data?.data as { stamp?: number })?.stamp !== stamp) return { ok: false, error: 'probe mismatch' };
   return { ok: true, ms: Math.round(performance.now() - t0) };
 }
+
+// --- Push-on-write: the reliability contract users actually feel.
+// A change must leave the device within about a second of being made -
+// not on the next 20-60s poll tick, and not "when the tab regains focus"
+// (on a phone the app is usually already backgrounded by then, and iOS
+// kills in-flight requests). Every outbox growth schedules a cycle; rapid
+// edits coalesce into one push.
+let scheduled: number | null = null;
+export const syncSignals = { scheduled: 0 }; // observable by tests, nothing else reads it
+export function scheduleSync(delayMs = 1200): void {
+  syncSignals.scheduled += 1; // the seam fired - counted even when signed out
+  if (!supabase || !session) return;
+  if (scheduled !== null) window.clearTimeout(scheduled);
+  scheduled = window.setTimeout(() => {
+    scheduled = null;
+    void syncNow();
+  }, delayMs);
+}
+onOutboxFlush(() => scheduleSync());
 
 /** Full cycle: push what we have, pull what's new. Safe to call often. */
 export async function syncNow(): Promise<void> {

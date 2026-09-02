@@ -4,6 +4,37 @@
 }
 .account-btn.on {
   padding: 0;
+  position: relative;
+}
+/* sync state at a glance, on the button itself: amber = changes still
+   leaving this device, red = stuck or failing. Absent when all is clean. */
+.account-dot {
+  position: absolute;
+  inset-block-end: -1px;
+  inset-inline-end: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--surface-card, var(--color-bg));
+  box-sizing: content-box;
+  pointer-events: none;
+}
+.account-dot-busy {
+  background: var(--color-warning, #d9a23a);
+  animation: account-dot-pulse 1.4s ease-in-out infinite;
+}
+.account-dot-issue {
+  background: var(--color-error);
+}
+@keyframes account-dot-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .account-dot-busy {
+    animation: none;
+  }
 }
 .account-avatar {
   width: 22px;
