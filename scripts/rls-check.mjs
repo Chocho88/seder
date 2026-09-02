@@ -269,6 +269,25 @@ select check_eq('owner cannot see member private item',
 select check_eq('owner cannot read member item_prefs',
   (select count(*) from public.item_prefs where user_id = '${MEMBER}'), 0);
 
+------------------------------------------------------- server-side LWW guard
+-- a push whose updated_at is OLDER than what is already stored must be
+-- dropped silently (no error, no effect) - not overwrite a newer write
+-- just because it happened to reach the server later.
+insert into public.items (id, user_id, data, updated_at, deleted) values
+  ('it-home-1', '${OWNER}', '{"id":"it-home-1","categoryId":"cat-home","title":"stale write"}', 6500, false)
+  on conflict (id) do update set data = excluded.data, updated_at = excluded.updated_at;
+select check_eq('stale (older) push is dropped, title unchanged',
+  (select count(*) from public.items where id = 'it-home-1' and data->>'title' = 'pinned edit'), 1);
+select check_eq('stale (older) push does not move the updated_at backwards',
+  (select count(*) from public.items where id = 'it-home-1' and updated_at = 7000), 1);
+
+-- a genuinely newer push still applies as normal
+insert into public.items (id, user_id, data, updated_at, deleted) values
+  ('it-home-1', '${OWNER}', '{"id":"it-home-1","categoryId":"cat-home","title":"actually newer"}', 7500, false)
+  on conflict (id) do update set data = excluded.data, updated_at = excluded.updated_at;
+select check_eq('newer push still applies over the LWW guard',
+  (select count(*) from public.items where id = 'it-home-1' and data->>'title' = 'actually newer' and updated_at = 7500), 1);
+
 ------------------------------------------------------------------ leave
 select jwt_as('${MEMBER}');
 update public.shares set status = 'left', updated_at = 8000 where id = 'share-1';
@@ -323,6 +342,7 @@ select count(*) filter (where not ok) as failures from _results;
 writeFileSync(join(work, 'harness.sql'), harness);
 writeFileSync(join(work, 'schema.sql'), readFileSync(join(root, 'supabase/schema.sql')));
 writeFileSync(join(work, '002.sql'), readFileSync(join(root, 'supabase/migrations/002_sharing.sql')));
+writeFileSync(join(work, '003.sql'), readFileSync(join(root, 'supabase/migrations/003_lww_guard.sql')));
 writeFileSync(join(work, 'grants.sql'), grants + helpers);
 writeFileSync(join(work, 'checks.sql'), checks);
 if (asRoot) execSync(`chown -R postgres:postgres ${work}`);
@@ -330,6 +350,7 @@ if (asRoot) execSync(`chown -R postgres:postgres ${work}`);
 psql(join(work, 'harness.sql'));
 psql(join(work, 'schema.sql'));
 psql(join(work, '002.sql'));
+psql(join(work, '003.sql'));
 psql(join(work, 'grants.sql'));
 const out = psql(join(work, 'checks.sql'));
 

@@ -90,9 +90,13 @@ themselves (caught by rls-check, closed by the trigger).
   returns if re-invited).
 - Item tombstones carry `categoryId` (captured by the Dexie deleting hook)
   so a member's delete passes the membership policy.
-- Title conflicts: when a pending local edit loses to a newer remote row and
-  the titles differ, the loser gets one toast (`onConflict` -> store).
-  Last-write-wins per row otherwise, as before.
+- Conflicts: when a pending local edit loses to a newer remote row that
+  actually differs (any field, not just title), the loser gets one toast
+  (`onConflict` -> store); when it loses because the row was deleted
+  elsewhere first, a distinct toast fires (`onDeleteConflict`). Personal
+  prefs are excluded (they never cross accounts). Last-write-wins per row
+  otherwise, as before - now also enforced server-side (a stale push cannot
+  overwrite a row a newer write already landed on, see architecture.md).
 - Realtime subscribes to all four tables.
 
 Share ACTIONS (invite/accept/decline/leave/revoke) are direct, online

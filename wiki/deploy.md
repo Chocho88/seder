@@ -12,7 +12,10 @@
   Schema: `supabase/schema.sql` (applied) **plus
   `supabase/migrations/002_sharing.sql` (shared lists - MUST be applied
   before the sharing build goes live; paste the whole file once into the SQL
-  editor, it is idempotent)**. Realtime on. Auth: Email
+  editor, it is idempotent) and `supabase/migrations/003_lww_guard.sql`
+  (server-side last-write-wins guard - paste it once too, also idempotent;
+  without it a concurrent push race can let an older edit overwrite a newer
+  one purely by network timing, see architecture.md)**. Realtime on. Auth: Email
   provider on, "Confirm email" off, Site URL = the vercel URL, redirect
   allow-list = vercel URL + `http://localhost:5183/**`.
 - **Google sign-in (one-time setup, user-only - nobody else can create keys

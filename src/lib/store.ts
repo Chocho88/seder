@@ -10,7 +10,7 @@ import { create } from 'zustand';
 import { db, uid, ownerId, ensurePrefs } from './db';
 import { seedIfEmpty } from './seed';
 import { t, tfmt } from './i18n';
-import { onRemote, onConflict, onSyncError, shareToRow, isMissingTableError } from './sync';
+import { onRemote, onConflict, onDeleteConflict, onSyncError, shareToRow, isMissingTableError } from './sync';
 import { startSelfUpdate } from './update';
 import { parseMarkdownTasks } from './mdImport';
 import { supabase } from './supabase';
@@ -360,8 +360,10 @@ export const useSeder = create<SederState>((set, get) => {
     // remote changes (other device, other account) land in IndexedDB;
     // reload the live state
     onRemote(() => void get().reloadFromDb());
-    // a pending title edit lost to a newer remote one - never silently
-    onConflict(() => set({ toast: { label: t('toast_title_conflict'), at: Date.now(), undoable: false } }));
+    // a pending edit lost to a newer remote write, or to a delete elsewhere
+    // - never silently
+    onConflict(() => set({ toast: { label: t('toast_edit_conflict'), at: Date.now(), undoable: false } }));
+    onDeleteConflict(() => set({ toast: { label: t('toast_edit_lost_to_delete'), at: Date.now(), undoable: false } }));
     // sync trouble is a visible event, once per losing streak
     onSyncError(() => set({ toast: { label: t('sync_failed'), at: Date.now(), undoable: false } }));
     // ask the browser to shield IndexedDB from storage eviction - quiet

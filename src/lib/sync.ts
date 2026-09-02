@@ -61,7 +61,8 @@ let pushing = false;
 // poll tick: remember it and run one more cycle as soon as this one ends
 let pushQueued = false;
 let onRemoteChange: (() => void) | null = null;
-let onTitleConflict: ((loserTitle: string) => void) | null = null;
+let onEditConflict: ((label: string) => void) | null = null;
+let onDeleteConflictCb: ((label: string) => void) | null = null;
 let onSyncFailure: (() => void) | null = null;
 // sync failures surface ONCE per losing streak - a toast, not a siren
 let cycleFailed = false;
@@ -80,9 +81,18 @@ export function onRemote(cb: () => void): void {
   onRemoteChange = cb;
 }
 
-/** A pending local title edit lost to a newer remote one - toast once. */
-export function onConflict(cb: (loserTitle: string) => void): void {
-  onTitleConflict = cb;
+/** A pending local edit (any field, not just title) lost to a newer remote
+    write on the same row - toast once per row so it's never silent. */
+export function onConflict(cb: (label: string) => void): void {
+  onEditConflict = cb;
+}
+
+/** A pending local edit lost because the row was deleted elsewhere (another
+    device, or the other side of a share) before our edit ever reached the
+    server - distinct from onConflict because "it's gone" reads differently
+    from "someone else's edit won". */
+export function onDeleteConflict(cb: (label: string) => void): void {
+  onDeleteConflictCb = cb;
 }
 
 /** Sync went wrong (network, policies) - the user must SEE it, once. */
@@ -499,6 +509,15 @@ export async function pushOutbox(): Promise<void> {
   }
 }
 
+/** True when any field but updatedAt differs between two rows of the same
+    shape - the generic "would this remote write actually change what I have
+    pending" check, used for both branches below. */
+function anyFieldDiffers(mine: Record<string, unknown>, theirs: Record<string, unknown>): boolean {
+  return Object.keys(theirs).some((k) => k !== 'updatedAt' && JSON.stringify(mine[k]) !== JSON.stringify(theirs[k]));
+}
+const labelOf = (row: Record<string, unknown>): string =>
+  (row.title as string | undefined) ?? (row.name as string | undefined) ?? '';
+
 /** Apply one remote row locally if it wins; returns true when it changed us. */
 async function applyRow(table: Table, row: Row): Promise<boolean> {
   const store = table === 'items' ? db.items : table === 'categories' ? db.categories : db.prefs;
@@ -509,15 +528,22 @@ async function applyRow(table: Table, row: Row): Promise<boolean> {
   if (pendingLocal > 0 && localAt >= row.updated_at) return false;
   if (row.deleted) {
     if (!local) return false;
+    // my pending edit never reached the server - someone else's delete got
+    // there first. Distinct from an edit-vs-edit conflict: "it's gone", not
+    // "someone else's version won" - and it must never happen silently.
+    if (table !== 'item_prefs' && pendingLocal > 0) onDeleteConflictCb?.(labelOf(local as unknown as Record<string, unknown>));
     await withRemote(() => store.delete(row.id));
     return true;
   }
   if (row.updated_at <= localAt) return false;
-  // never lose a title edit silently: if my pending edit loses, say so once
-  if (table === 'items' && pendingLocal > 0) {
-    const mine = (local as Item | undefined)?.title;
-    const theirs = (row.data as Item).title;
-    if (mine && theirs && mine !== theirs) onTitleConflict?.(mine);
+  // never lose a pending edit silently: if it loses to a newer remote write
+  // that actually differs - on ANY field, not just title - say so once.
+  // (Personal prefs are excluded: those never cross accounts, and the same
+  // person's own quick toggles across two devices are not worth a toast.)
+  if (table !== 'item_prefs' && pendingLocal > 0 && local) {
+    const mine = local as unknown as Record<string, unknown>;
+    const theirs = row.data as unknown as Record<string, unknown>;
+    if (anyFieldDiffers(mine, theirs)) onEditConflict?.(labelOf(mine));
   }
   await withRemote(() => store.put(row.data as any));
   return true;
@@ -683,22 +709,63 @@ export function isRealtimeDelivering(): boolean {
 
 export function startRealtime(): void {
   if (!supabase || !session || channel) return;
-  channel = supabase.channel('seder-changes');
+  const ch = supabase.channel('seder-changes');
   for (const table of ['items', 'categories', 'item_prefs', 'shares']) {
-    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => {
+    ch.on('postgres_changes', { event: '*', schema: 'public', table }, () => {
       realtimeDelivering = true; // an actual event arrived - fast lane works
       void pullThenNotify();
     });
   }
-  channel.subscribe();
+  channel = ch;
+  ch.subscribe((status) => {
+    if (status !== 'CLOSED' && status !== 'CHANNEL_ERROR' && status !== 'TIMED_OUT') return;
+    // the socket died - most often a phone backgrounded long enough that
+    // iOS/the OS drops the connection with no JS-visible error. Left
+    // unnoticed, `isRealtimeDelivering()` (having seen ONE event, ever)
+    // keeps reporting true and the poll stays relaxed to 60s - two devices
+    // can silently drift for a minute at a time. Tear down so the next
+    // poll tick or resume calls startRealtime() again on a clean slate.
+    realtimeDelivering = false;
+    if (channel === ch) stopRealtime();
+  });
 }
 export function stopRealtime(): void {
   if (channel && supabase) void supabase.removeChannel(channel);
   channel = null;
 }
+/** Force a fresh subscription regardless of whether the old channel object
+    still looks alive - called on resume (auth.ts), since a suspended
+    WebSocket is exactly the thing a status callback cannot always catch
+    while the tab was backgrounded. */
+export function restartRealtime(): void {
+  stopRealtime();
+  startRealtime();
+}
 
+// Realtime delivers one event PER CHANGED ROW: a bulk operation (markdown
+// import, a big sweep, accepting a share with existing items) fires many
+// nearly-simultaneous events, each naively triggering its own full
+// pullChanges() - a read storm, and overlapping pulls each re-rendering the
+// whole store. Same guard-and-coalesce idiom as pushOutbox/pushQueued: a
+// pull already running absorbs everything that arrives while it runs into
+// exactly one more pass, not one pass per event.
+let pulling = false;
+let pullQueued = false;
 async function pullThenNotify() {
-  if (await pullChanges()) onRemoteChange?.();
+  if (pulling) {
+    pullQueued = true;
+    return;
+  }
+  pulling = true;
+  try {
+    if (await pullChanges()) onRemoteChange?.();
+  } finally {
+    pulling = false;
+    if (pullQueued) {
+      pullQueued = false;
+      void pullThenNotify();
+    }
+  }
 }
 
 /** One-tap proof for THIS device: write a probe row through the real
@@ -742,14 +809,23 @@ export function scheduleSync(delayMs = 1200): void {
 }
 onOutboxFlush(() => scheduleSync());
 
-/** Full cycle: push what we have, pull what's new. Safe to call often. */
+/** Full cycle: pull what's new, then push what we have. Safe to call often.
+    Pull runs FIRST: it merges the freshest remote content into Dexie before
+    push re-serializes local rows. This matters most for reorder-only writes
+    (dropOn/reorderInCategory/etc.) - they touch every sibling's `order`
+    field but never bump the row's own updatedAt, so pushOutbox falls back
+    to "now" for those rows and re-uploads the row's FULL local snapshot.
+    Pulling first means that snapshot already carries any edit another
+    device made and we have not yet seen, instead of a stale cached copy
+    racing a genuinely newer edit on updated_at alone (a pending edit of
+    OURS still wins either way - applyRow checks the outbox, not push order). */
 export async function syncNow(): Promise<void> {
   if (!supabase || !session) return;
   cycleFailed = false;
   authTrouble = false;
   skewTrouble = false;
-  await pushOutbox();
   await pullThenNotify();
+  await pushOutbox();
   if (skewTrouble) {
     skewTrouble = false;
     scheduleSync(skewBackoff);

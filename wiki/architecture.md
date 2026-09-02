@@ -50,6 +50,15 @@ Remote applies wrap in `withRemote()` so they don't re-enter the outbox.
 - Three uniform synced tables: `items`, `categories`, `item_prefs` (Dexie
   `prefs` - the per-user triage overlay, see sharing.md), plus `shares` as a
   pull-refreshed cache (share actions are direct online calls, not outboxed).
+- `syncNow()` **pulls before it pushes**. Pulling first merges the freshest
+  remote content into Dexie before push re-serializes local rows - this
+  matters most for reorder-only writes (dropOn/reorderInCategory/etc.),
+  which touch every sibling's `order` field without bumping the row's own
+  `updatedAt`, so pushOutbox falls back to "now" for those rows and
+  re-uploads the row's full local snapshot. Pulling first means that
+  snapshot already carries any edit another device made that we had not
+  yet seen, shrinking the window where a reorder's stale cached content
+  could race a genuinely newer edit made elsewhere.
 - `pushOutbox()`: collapse outbox to latest-per-row, upsert `{id, user_id,
   data(jsonb), updated_at, deleted}` per table, then delete pushed entries.
   Deletes are tombstones (`deleted: true`; item tombstones carry categoryId
@@ -58,17 +67,42 @@ Remote applies wrap in `withRemote()` so they don't re-enter the outbox.
 - `pullChanges()`: rows with `updated_at > lastPull`; items/categories are
   NOT filtered by user_id - RLS returns mine plus shared-with-me; prefs are
   mine only. Last-write-wins by `updated_at`; a pending local change beats an
-  older remote one; tombstones delete locally; a lost pending title edit
-  toasts once. A newly accepted share backfills its list past the watermark;
-  a share that stops being accepted prunes the list from the member device.
+  older remote one; tombstones delete locally; a lost pending edit (any
+  field, not just title) toasts once, and losing to a delete elsewhere
+  toasts a distinct message. A newly accepted share backfills its list past
+  the watermark; a share that stops being accepted prunes the list from the
+  member device.
+- **LWW is enforced server-side too** (`003_lww_guard.sql`): a trigger on
+  items/categories/item_prefs drops an incoming UPDATE whose `updated_at` is
+  older than the row's current one. Without it, `upsert()` unconditionally
+  replaces the row - two concurrent pushes would let whichever reached
+  Postgres LAST win, even if its timestamp was older, purely from network
+  timing. Equal timestamps still apply (retries stay idempotent).
 - Realtime channel on all four tables triggers pull; also on
   focus/online/60s AND on pagehide/hidden (entries typed right before
-  closing the app still leave the device). `syncStatus()` exposes pending
-  count + last-ok time (shown live in AccountMenu); failures toast once per
-  losing streak (`onSyncError`). `navigator.storage.persist()` is requested
-  on init; an account SWITCH stashes a backup-format snapshot in
-  localStorage `seder-recovery` before the wipe (restorable via
-  Settings > Import).
+  closing the app still leave the device). A bulk change fires one realtime
+  event per row - `pullThenNotify()` guards against overlapping pulls the
+  same way `pushOutbox` guards overlapping pushes (a pull already running
+  absorbs everything that arrives into exactly one more pass). The channel's
+  subscribe status is watched too: on CLOSED/CHANNEL_ERROR/TIMED_OUT (a
+  WebSocket a backgrounded phone silently dropped) the channel tears itself
+  down so the next poll tick or resume (`restartRealtime()`, called on
+  visibilitychange-to-visible) starts a clean one, instead of leaving
+  `isRealtimeDelivering()` reporting a dead channel as live and the poll
+  relaxed to 60s. `syncStatus()` exposes pending count + last-ok time (shown
+  live in AccountMenu); failures toast once per losing streak
+  (`onSyncError`). `navigator.storage.persist()` is requested on init; an
+  account SWITCH stashes a backup-format snapshot in localStorage
+  `seder-recovery` before the wipe (restorable via Settings > Import) - the
+  wipe itself clears items/categories/prefs/shares/outbox/meta, all of it,
+  so a second account signing in on the same device never inherits the
+  first account's leftover triage rows.
+- The Supabase client's `fetch` sets `keepalive: true` on mutating requests
+  only (`supabase.ts`) - a push must survive the tab backgrounding or
+  closing right after an edit, which a plain `fetch()` does not guarantee.
+  Left off GET/HEAD deliberately: keepalive requests are capped near 64KB
+  combined in Chrome, and a pull after a long offline stretch can be much
+  bigger than any one push ever is.
 - First sign-in on a device with local data: `seedOutboxFromLocal()` uploads
   everything once (`meta.seededFor`).
 - Server schema: `id text primary key`; RLS = owner OR accepted member of the

@@ -126,7 +126,8 @@ const DICT: Record<string, { en: string; he: string }> = {
   invite_banner: { en: '{owner} shared "{list}" with you', he: '{owner} שיתפו איתך את "{list}"' },
   accept: { en: 'Accept', he: 'לקבל' },
   decline: { en: 'Decline', he: 'לא תודה' },
-  toast_title_conflict: { en: 'Title changed on both sides - kept the newer one', he: 'הכותרת שונתה בשני הצדדים - נשמרה החדשה' },
+  toast_edit_conflict: { en: 'A newer change from elsewhere overwrote your edit here', he: 'שינוי חדש יותר ממקום אחר דרס את העריכה שלך כאן' },
+  toast_edit_lost_to_delete: { en: 'This was deleted elsewhere before your change reached it', he: 'זה נמחק במקום אחר לפני שהשינוי שלך הגיע אליו' },
   // sync visibility + Google sign-in
   google_not_ready: { en: 'Google sign-in is not switched on yet. Use the email link meanwhile.', he: 'התחברות עם Google עוד לא הופעלה. בינתיים אפשר להיכנס עם קישור במייל.' },
   or_email: { en: 'or with an email link', he: 'או עם קישור במייל' },

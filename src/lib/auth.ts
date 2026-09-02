@@ -5,7 +5,16 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, syncConfigured } from './supabase';
-import { setSyncSession, seedOutboxFromLocal, startRealtime, syncNow, onRemote, isRealtimeDelivering, onAuthLostCallback } from './sync';
+import {
+  setSyncSession,
+  seedOutboxFromLocal,
+  startRealtime,
+  restartRealtime,
+  syncNow,
+  onRemote,
+  isRealtimeDelivering,
+  onAuthLostCallback,
+} from './sync';
 import { meta, db } from './db';
 
 export type AuthState = { status: 'loading' | 'signed-out' | 'signed-in' | 'unconfigured'; session: Session | null };
@@ -85,6 +94,10 @@ if (supabase) {
   // "I opened the app, show me what changed on the other device" moment.
   window.addEventListener('pagehide', () => void syncNow());
   document.addEventListener('visibilitychange', () => {
+    // coming back: a suspended WebSocket does not always report its own
+    // death (iOS backgrounding especially) - force a fresh subscription
+    // rather than trust a channel object that merely still exists
+    if (document.visibilityState === 'visible') restartRealtime();
     void syncNow(); // hidden: flush out; visible: pull in
   });
 }
@@ -134,9 +147,17 @@ export async function signOut(): Promise<void> {
 
 async function wipeLocal(): Promise<void> {
   const { db: d } = await import('./db');
-  await d.transaction('rw', d.items, d.categories, d.outbox, d.meta, async () => {
+  // prefs and shares must go too: ensurePrefs() re-keys any prefs row it
+  // finds under a DIFFERENT owner id to the new owner (that is exactly right
+  // for the local -> first-sign-in transition it was built for) - left
+  // behind here, it would instead adopt the PREVIOUS account's triage rows
+  // and push them into the new account's item_prefs table, referencing item
+  // ids the new account never had.
+  await d.transaction('rw', [d.items, d.categories, d.prefs, d.shares, d.outbox, d.meta], async () => {
     await d.items.clear();
     await d.categories.clear();
+    await d.prefs.clear();
+    await d.shares.clear();
     await d.outbox.clear();
     await d.meta.clear();
   });
