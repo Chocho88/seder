@@ -18,7 +18,9 @@ import type { RealtimeChannel, Session } from '@supabase/supabase-js';
 import { db, outbox, meta, withRemote, uid, onOutboxFlush, type OutboxTable } from './db';
 import { isMissingTableError, neutralizeShared, prefsFromItem, type ItemPrefs } from './shareSplit';
 import {
+  isClockSkewError,
   isTransientError,
+  jwtIatOffsetMs,
   mergeParked,
   parseSyncError,
   shouldPark,
@@ -101,7 +103,12 @@ async function readLastError(): Promise<SyncErrorInfo | null> {
 
 function noteFailure(detail: string): void {
   cycleFailed = true;
-  if (isAuthTrouble(detail)) authTrouble = true;
+  if (isClockSkewError(detail)) {
+    skewTrouble = true;
+    // say how big the gap is, measured against THIS device's clock
+    const off = jwtIatOffsetMs(session?.access_token, Date.now());
+    if (off !== null) detail = `${detail} (token minted ${off >= 0 ? '+' : ''}${(off / 1000).toFixed(1)}s vs this device's clock)`;
+  } else if (isAuthTrouble(detail)) authTrouble = true;
   void meta.put({ key: 'lastSyncError', value: { at: Date.now(), detail } satisfies SyncErrorInfo });
   if (!failureToasted) {
     failureToasted = true;
@@ -115,6 +122,14 @@ function noteFailure(detail: string): void {
 // if the refresh itself fails the device is truthfully signed out, so the
 // panel shows the sign-in button instead of an endless red line.
 let authTrouble = false;
+let lastAuthRecovery = 0; // never hammer the auth service: one refresh per minute at most
+// Clock skew ("JWT issued at future"): the token is fine, the API's clock
+// is a little behind the auth service's. Retry with a growing pause -
+// 3s, 6s, 12s, capped - and NEVER refresh for it (a fresh token would be
+// future-stamped again, and the retry-refresh loop that produced hammers
+// both services while every push keeps landing inside the skew window).
+let skewTrouble = false;
+let skewBackoff = 3000;
 let onAuthLost: (() => void) | null = null;
 export function onAuthLostCallback(cb: () => void): void {
   onAuthLost = cb;
@@ -124,6 +139,8 @@ function isAuthTrouble(detail: string): boolean {
 }
 async function recoverAuth(): Promise<void> {
   if (!supabase) return;
+  if (Date.now() - lastAuthRecovery < 60_000) return; // the poll retries anyway
+  lastAuthRecovery = Date.now();
   const { data, error } = await supabase.auth.refreshSession();
   if (error || !data.session) {
     console.warn('[sync] session refresh failed - signing this device out', error?.message);
@@ -730,13 +747,19 @@ export async function syncNow(): Promise<void> {
   if (!supabase || !session) return;
   cycleFailed = false;
   authTrouble = false;
+  skewTrouble = false;
   await pushOutbox();
   await pullThenNotify();
-  if (authTrouble) {
+  if (skewTrouble) {
+    skewTrouble = false;
+    scheduleSync(skewBackoff);
+    skewBackoff = Math.min(skewBackoff * 2, 30_000);
+  } else if (authTrouble) {
     authTrouble = false;
     await recoverAuth();
   }
   if (!cycleFailed) {
+    skewBackoff = 3000;
     failureToasted = false; // a clean cycle re-arms the one-shot warning
     await meta.put({ key: 'lastSyncOk', value: Date.now() });
     await meta.delete('lastSyncError');

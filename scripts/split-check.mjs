@@ -208,7 +208,7 @@ const item = {
 
 // ---- syncHealth.ts: parking + humane status (pure, browser-free) ----
 {
-  const { parseSyncError, isTransientError, shouldPark, mergeParked, unparkPlan, statusView } = await import(
+  const { parseSyncError, isTransientError, isClockSkewError, jwtIatOffsetMs, shouldPark, mergeParked, unparkPlan, statusView } = await import(
     join(dirname(self), '../src/lib/syncHealth.ts')
   );
 
@@ -223,6 +223,14 @@ const item = {
   check('health: Load failed is transient', isTransientError('TypeError: Load failed'));
   check('health: fetch failure is transient', isTransientError('Failed to fetch'));
   check('health: RLS message is not transient', !isTransientError('new row violates row-level security policy'));
+  check('health: JWT issued at future is clock skew', isClockSkewError('push items: JWT issued at future'));
+  check('health: clock skew is transient (never parks)', isTransientError('JWT issued at future') && !shouldPark('push-error', 99, isTransientError('JWT issued at future')));
+  check('health: JWT expired is not clock skew', !isClockSkewError('JWT expired'));
+  const b64url = (o) => Buffer.from(JSON.stringify(o)).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const jwt = `${b64url({ alg: 'HS256' })}.${b64url({ iat: 1_000_000_005, sub: 'x' })}.sig`;
+  check('health: jwt iat offset measured (+5s)', jwtIatOffsetMs(jwt, 1_000_000_000_000) === 5000);
+  check('health: jwt without iat -> null', jwtIatOffsetMs(`${b64url({})}.${b64url({ sub: 'x' })}.s`, 0) === null);
+  check('health: garbage token -> null', jwtIatOffsetMs('nope', 0) === null && jwtIatOffsetMs(null, 0) === null);
 
   check('health: heal-declined parks immediately', shouldPark('heal-declined', 1, false));
   check('health: transient never parks', !shouldPark('heal-declined', 99, true) && !shouldPark('push-error', 99, true));

@@ -136,6 +136,7 @@ const DICT: Record<string, { en: string; he: string }> = {
   last_synced: { en: 'Last synced', he: 'סונכרן לאחרונה' },
   never_synced: { en: 'Has not managed to sync on this device yet', he: 'עדיין לא הצליח להסתנכרן במכשיר הזה' },
   sync_failed_short: { en: 'Sync failed', he: 'הסנכרון נכשל' },
+  sync_clock_skew: { en: 'The sync server\'s clock is slightly behind - retrying automatically every few seconds. Nothing to do on your side.', he: 'שעון שרת הסנכרון מפגר מעט - מנסים שוב אוטומטית כל כמה שניות. אין מה לעשות מצדך.' },
   // the Today shelf
   section_today: { en: 'Today', he: 'היום' },
   today_shelf_empty: { en: 'Drop a task here for today', he: 'גררו לכאן משימה להיום' },

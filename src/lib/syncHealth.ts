@@ -47,7 +47,33 @@ export function parseSyncError(value: unknown): SyncErrorInfo | null {
 /** Network-ish failures that a later cycle can plausibly fix on its own.
     These must never park - retrying is exactly right for them. */
 export function isTransientError(message: string): boolean {
-  return /load failed|failed to fetch|network|timeout|timed out|abort|socket|ECONN|offline/i.test(message);
+  return /load failed|failed to fetch|network|timeout|timed out|abort|socket|ECONN|offline/i.test(message) || isClockSkewError(message);
+}
+
+/** The server rejected a token as "issued at future" (or "not yet valid"):
+    clock skew between the auth service that minted it and the API that
+    checks it. Refreshing mints ANOTHER future-stamped token - the only cure
+    is to wait a few seconds and retry the same one. */
+export function isClockSkewError(message: string): boolean {
+  return /issued at future|not yet valid|\bnbf\b/i.test(message);
+}
+
+/** How far in the future (positive) or past (negative) a JWT's iat claim
+    sits relative to a clock - in ms. null when the token is unreadable.
+    Shown next to a clock-skew failure so the panel itself says how big
+    the gap is (and on which side). */
+export function jwtIatOffsetMs(token: string | null | undefined, nowMs: number): number | null {
+  if (!token) return null;
+  const parts = token.split('.');
+  if (parts.length < 2) return null;
+  try {
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4));
+    const iat = (JSON.parse(json) as { iat?: unknown }).iat;
+    return typeof iat === 'number' ? iat * 1000 - nowMs : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Park immediately when self-heal explicitly declined (it will decline

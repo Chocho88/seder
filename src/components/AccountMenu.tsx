@@ -7,7 +7,7 @@ import icons from '../../vendor/design-system/icons.svg';
 import { GoogleIcon } from './SederIcons';
 import { useAuth, signInWithEmail, signInWithGoogle, signOut, syncNow } from '../lib/auth';
 import { syncStatus, probeRoundTrip, retryParked } from '../lib/sync';
-import { statusView, type SyncErrorInfo } from '../lib/syncHealth';
+import { isClockSkewError, statusView, type SyncErrorInfo } from '../lib/syncHealth';
 import { t, useLang } from '../lib/i18n';
 import './account.css';
 
@@ -139,7 +139,7 @@ export default function AccountMenu() {
                     tap away, never in the reader's face */}
                 {vm?.errorVisible && status?.lastError && (
                   <div className="account-sync-issue">
-                    {t('sync_issue')}
+                    {isClockSkewError(status.lastError.detail) ? t('sync_clock_skew') : t('sync_issue')}
                     {/* the reason stays visible - hiding it behind a tap
                         turned "why?" into a support question */}
                     <details className="account-sync-details" open>
