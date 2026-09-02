@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, syncConfigured } from './supabase';
-import { setSyncSession, seedOutboxFromLocal, startRealtime, syncNow, onRemote, isRealtimeDelivering } from './sync';
+import { setSyncSession, seedOutboxFromLocal, startRealtime, syncNow, onRemote, isRealtimeDelivering, onAuthLostCallback } from './sync';
 import { meta, db } from './db';
 
 export type AuthState = { status: 'loading' | 'signed-out' | 'signed-in' | 'unconfigured'; session: Session | null };
@@ -60,6 +60,11 @@ async function onSession(session: Session | null) {
 }
 
 if (supabase) {
+  // the sync engine could not refresh an expired session: drop it locally
+  // so the account panel shows "sign in" - the truth - instead of a device
+  // that looks signed in but is rejected on every request
+  const client = supabase; // narrowed once; the callback runs later
+  onAuthLostCallback(() => void client.auth.signOut({ scope: 'local' }));
   void supabase.auth.getSession().then(({ data }) => void onSession(data.session));
   supabase.auth.onAuthStateChange((_evt, session) => void onSession(session));
   // resync when the tab comes back and periodically as a safety net.

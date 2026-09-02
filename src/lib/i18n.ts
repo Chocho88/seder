@@ -134,7 +134,8 @@ const DICT: Record<string, { en: string; he: string }> = {
   sync_pending_n: { en: 'changes waiting to sync', he: 'שינויים ממתינים לסנכרון' },
   sync_all_clear: { en: 'Everything is synced', he: 'הכל מסונכרן' },
   last_synced: { en: 'Last synced', he: 'סונכרן לאחרונה' },
-  never_synced: { en: 'Not synced yet on this device', he: 'עוד לא סונכרן במכשיר הזה' },
+  never_synced: { en: 'Has not managed to sync on this device yet', he: 'עדיין לא הצליח להסתנכרן במכשיר הזה' },
+  sync_failed_short: { en: 'Sync failed', he: 'הסנכרון נכשל' },
   // the Today shelf
   section_today: { en: 'Today', he: 'היום' },
   today_shelf_empty: { en: 'Drop a task here for today', he: 'גררו לכאן משימה להיום' },

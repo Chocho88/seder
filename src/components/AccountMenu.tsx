@@ -140,7 +140,9 @@ export default function AccountMenu() {
                 {vm?.errorVisible && status?.lastError && (
                   <div className="account-sync-issue">
                     {t('sync_issue')}
-                    <details className="account-sync-details">
+                    {/* the reason stays visible - hiding it behind a tap
+                        turned "why?" into a support question */}
+                    <details className="account-sync-details" open>
                       <summary>{t('sync_details')}</summary>
                       <span dir="ltr">{status.lastError.detail}</span>
                     </details>
@@ -184,7 +186,7 @@ export default function AccountMenu() {
                   : manualSync === 'ok'
                     ? `${t('sync_done')} ✓`
                     : manualSync === 'fail'
-                      ? t('sync_check_fail')
+                      ? t('sync_failed_short')
                       : t('sync_now')}
               </button>
               <button

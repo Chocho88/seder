@@ -101,11 +101,37 @@ async function readLastError(): Promise<SyncErrorInfo | null> {
 
 function noteFailure(detail: string): void {
   cycleFailed = true;
+  if (isAuthTrouble(detail)) authTrouble = true;
   void meta.put({ key: 'lastSyncError', value: { at: Date.now(), detail } satisfies SyncErrorInfo });
   if (!failureToasted) {
     failureToasted = true;
     onSyncFailure?.();
   }
+}
+
+// --- Auth-class failures: an expired or invalid token rejects EVERY
+// request, which a user experiences as "it is not syncing" with nothing
+// obviously wrong. The cycle after such a failure refreshes the session;
+// if the refresh itself fails the device is truthfully signed out, so the
+// panel shows the sign-in button instead of an endless red line.
+let authTrouble = false;
+let onAuthLost: (() => void) | null = null;
+export function onAuthLostCallback(cb: () => void): void {
+  onAuthLost = cb;
+}
+function isAuthTrouble(detail: string): boolean {
+  return /jwt|token|not authenticated|unauthori[sz]ed|\b401\b|PGRST301|invalid claim|session/i.test(detail);
+}
+async function recoverAuth(): Promise<void> {
+  if (!supabase) return;
+  const { data, error } = await supabase.auth.refreshSession();
+  if (error || !data.session) {
+    console.warn('[sync] session refresh failed - signing this device out', error?.message);
+    onAuthLost?.();
+    return;
+  }
+  session = data.session;
+  scheduleSync(0); // a fresh token: retry right away, not at the next tick
 }
 
 // --- Parked changes: rows the server keeps refusing for a durable reason.
@@ -703,8 +729,13 @@ onOutboxFlush(() => scheduleSync());
 export async function syncNow(): Promise<void> {
   if (!supabase || !session) return;
   cycleFailed = false;
+  authTrouble = false;
   await pushOutbox();
   await pullThenNotify();
+  if (authTrouble) {
+    authTrouble = false;
+    await recoverAuth();
+  }
   if (!cycleFailed) {
     failureToasted = false; // a clean cycle re-arms the one-shot warning
     await meta.put({ key: 'lastSyncOk', value: Date.now() });
