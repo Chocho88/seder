@@ -172,7 +172,11 @@ export default function AccountMenu() {
                     const s = await syncStatus();
                     setStatus(s);
                     setManualSync(s.lastError ? 'fail' : 'ok');
-                  } catch {
+                  } catch (err) {
+                    // syncNow() itself no longer throws (sync.ts wraps its
+                    // whole cycle), so reaching here means something even
+                    // more unexpected - never let it vanish silently
+                    console.error('[account] manual sync threw', err);
                     setManualSync('fail');
                   }
                   window.setTimeout(() => setManualSync('idle'), 2200);

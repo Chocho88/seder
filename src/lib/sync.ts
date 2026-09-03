@@ -500,6 +500,13 @@ export async function pushOutbox(): Promise<void> {
         noteFailure(`push ${serverTable(table)} threw: ${String((tableErr as { message?: string })?.message ?? tableErr).slice(0, 200)}`);
       }
     }
+  } catch (err) {
+    // the preamble above (reading the outbox, refreshing the shares cache)
+    // has no per-step guard the way the per-table loop does; one exception
+    // here must still surface as a real, visible, recorded failure instead
+    // of an unhandled rejection that escapes pushOutbox/syncNow silently.
+    console.warn('[sync] push preamble threw', err);
+    noteFailure(`push: ${String((err as { message?: string })?.message ?? err).slice(0, 200)}`);
   } finally {
     pushing = false;
     if (pushQueued) {
@@ -598,8 +605,20 @@ async function backfillAcceptedShares(shares: Share[]): Promise<boolean> {
       noteFailure(`backfill ${s.listId}: ${(cats.error ?? items.error)?.message}`);
       continue;
     }
-    for (const row of (cats.data ?? []) as Row[]) changed = (await applyRow('categories', row)) || changed;
-    for (const row of (items.data ?? []) as Row[]) changed = (await applyRow('items', row)) || changed;
+    for (const row of (cats.data ?? []) as Row[]) {
+      try {
+        changed = (await applyRow('categories', row)) || changed;
+      } catch (rowErr) {
+        console.warn('[sync] backfill applyRow threw', 'categories', row.id, rowErr);
+      }
+    }
+    for (const row of (items.data ?? []) as Row[]) {
+      try {
+        changed = (await applyRow('items', row)) || changed;
+      } catch (rowErr) {
+        console.warn('[sync] backfill applyRow threw', 'items', row.id, rowErr);
+      }
+    }
     await meta.put({ key: markKey, value: Date.now() });
   }
   return changed;
@@ -656,8 +675,20 @@ export async function pullChanges(): Promise<boolean> {
     }
     if (table === 'item_prefs') markSharing(true);
     for (const row of (data ?? []) as Row[]) {
+      // the watermark advances BEFORE applyRow runs: one malformed row (e.g.
+      // a legacy row whose data blob never got an id field, so Dexie's put
+      // throws "key path did not yield a value") must never wedge the whole
+      // pull forever. Before this guard, that single throw aborted the rest
+      // of the loop AND the watermark write below it, so the exact same
+      // poisoned row was re-fetched and re-thrown on every future cycle -
+      // permanently stuck, indistinguishable from "sync is broken".
       maxSeen = Math.max(maxSeen, row.updated_at);
-      changed = (await applyRow(table, row)) || changed;
+      try {
+        changed = (await applyRow(table, row)) || changed;
+      } catch (rowErr) {
+        console.warn('[sync] applyRow threw', table, row.id, rowErr);
+        noteFailure(`pull ${table} row ${row.id}: ${String((rowErr as { message?: string })?.message ?? rowErr).slice(0, 200)}`);
+      }
     }
   }
   // advance the watermark only when the core tables pulled clean, so a
@@ -824,15 +855,29 @@ export async function syncNow(): Promise<void> {
   cycleFailed = false;
   authTrouble = false;
   skewTrouble = false;
-  await pullThenNotify();
-  await pushOutbox();
-  if (skewTrouble) {
-    skewTrouble = false;
-    scheduleSync(skewBackoff);
-    skewBackoff = Math.min(skewBackoff * 2, 30_000);
-  } else if (authTrouble) {
-    authTrouble = false;
-    await recoverAuth();
+  try {
+    await pullThenNotify();
+    await pushOutbox();
+    if (skewTrouble) {
+      skewTrouble = false;
+      scheduleSync(skewBackoff);
+      skewBackoff = Math.min(skewBackoff * 2, 30_000);
+    } else if (authTrouble) {
+      authTrouble = false;
+      await recoverAuth();
+    }
+  } catch (err) {
+    // Last line of defense. pullChanges/pushOutbox are now hardened
+    // per-row/per-table (a single malformed row - e.g. a legacy row whose
+    // data blob is missing its id, which threw "key path did not yield a
+    // value" on every device, every cycle, forever - used to escape as an
+    // unhandled rejection here), but anything else that still slips
+    // through must land as a RECORDED, visible failure, not a bare
+    // rejection the account panel's Sync Now button can only relabel
+    // "Sync failed" with zero diagnostic - exactly what made this bug so
+    // hard to find in the first place.
+    console.warn('[sync] cycle threw', err);
+    noteFailure(`sync cycle: ${String((err as { message?: string })?.message ?? err).slice(0, 200)}`);
   }
   if (!cycleFailed) {
     skewBackoff = 3000;
