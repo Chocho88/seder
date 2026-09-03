@@ -111,6 +111,10 @@ async function readLastError(): Promise<SyncErrorInfo | null> {
   return parsed;
 }
 
+/** A thrown value's message, truncated - the one place every catch block
+    turns an unknown exception into the short text noteFailure records. */
+const errMsg = (e: unknown): string => String((e as { message?: string })?.message ?? e).slice(0, 200);
+
 function noteFailure(detail: string): void {
   cycleFailed = true;
   if (isClockSkewError(detail)) {
@@ -497,7 +501,7 @@ export async function pushOutbox(): Promise<void> {
         // when it's missing: the loop died here before ever reaching the
         // per-row handling above, so noteFailure was never called again.
         console.warn('[sync] push threw', table, tableErr);
-        noteFailure(`push ${serverTable(table)} threw: ${String((tableErr as { message?: string })?.message ?? tableErr).slice(0, 200)}`);
+        noteFailure(`push ${serverTable(table)} threw: ${errMsg(tableErr)}`);
       }
     }
   } catch (err) {
@@ -506,7 +510,7 @@ export async function pushOutbox(): Promise<void> {
     // here must still surface as a real, visible, recorded failure instead
     // of an unhandled rejection that escapes pushOutbox/syncNow silently.
     console.warn('[sync] push preamble threw', err);
-    noteFailure(`push: ${String((err as { message?: string })?.message ?? err).slice(0, 200)}`);
+    noteFailure(`push: ${errMsg(err)}`);
   } finally {
     pushing = false;
     if (pushQueued) {
@@ -518,10 +522,11 @@ export async function pushOutbox(): Promise<void> {
 
 /** True when any field but updatedAt differs between two rows of the same
     shape - the generic "would this remote write actually change what I have
-    pending" check, used for both branches below. */
+    pending" check, used by the edit-conflict branch below. */
 function anyFieldDiffers(mine: Record<string, unknown>, theirs: Record<string, unknown>): boolean {
   return Object.keys(theirs).some((k) => k !== 'updatedAt' && JSON.stringify(mine[k]) !== JSON.stringify(theirs[k]));
 }
+/** A row's display name, for the conflict toasts - shared by both branches. */
 const labelOf = (row: Record<string, unknown>): string =>
   (row.title as string | undefined) ?? (row.name as string | undefined) ?? '';
 
@@ -554,6 +559,28 @@ async function applyRow(table: Table, row: Row): Promise<boolean> {
   }
   await withRemote(() => store.put(row.data as any));
   return true;
+}
+
+/** Apply a batch of pulled rows defensively: one malformed row (e.g. a
+    legacy row whose data blob is missing its id, so Dexie's put throws
+    "key path did not yield a value") must never abort the rest of the
+    batch, or the caller's own bookkeeping (pullChanges' watermark, via
+    beforeEach) - the one thing that used to leave sync permanently stuck
+    on a single poisoned row. Shared by pullChanges' main loop and
+    backfillAcceptedShares' two loops, so a stuck row is reported the
+    same way, and never silently, wherever it's hit. */
+async function applyRowsSafely(table: Table, rows: Row[], beforeEach?: (row: Row) => void): Promise<boolean> {
+  let changed = false;
+  for (const row of rows) {
+    beforeEach?.(row);
+    try {
+      changed = (await applyRow(table, row)) || changed;
+    } catch (rowErr) {
+      console.warn('[sync] applyRow threw', table, row.id, rowErr);
+      noteFailure(`pull ${table} row ${row.id}: ${errMsg(rowErr)}`);
+    }
+  }
+  return changed;
 }
 
 /** Refresh the local shares cache from the server (the table is tiny). */
@@ -605,20 +632,8 @@ async function backfillAcceptedShares(shares: Share[]): Promise<boolean> {
       noteFailure(`backfill ${s.listId}: ${(cats.error ?? items.error)?.message}`);
       continue;
     }
-    for (const row of (cats.data ?? []) as Row[]) {
-      try {
-        changed = (await applyRow('categories', row)) || changed;
-      } catch (rowErr) {
-        console.warn('[sync] backfill applyRow threw', 'categories', row.id, rowErr);
-      }
-    }
-    for (const row of (items.data ?? []) as Row[]) {
-      try {
-        changed = (await applyRow('items', row)) || changed;
-      } catch (rowErr) {
-        console.warn('[sync] backfill applyRow threw', 'items', row.id, rowErr);
-      }
-    }
+    changed = (await applyRowsSafely('categories', (cats.data ?? []) as Row[])) || changed;
+    changed = (await applyRowsSafely('items', (items.data ?? []) as Row[])) || changed;
     await meta.put({ key: markKey, value: Date.now() });
   }
   return changed;
@@ -674,22 +689,13 @@ export async function pullChanges(): Promise<boolean> {
       continue;
     }
     if (table === 'item_prefs') markSharing(true);
-    for (const row of (data ?? []) as Row[]) {
-      // the watermark advances BEFORE applyRow runs: one malformed row (e.g.
-      // a legacy row whose data blob never got an id field, so Dexie's put
-      // throws "key path did not yield a value") must never wedge the whole
-      // pull forever. Before this guard, that single throw aborted the rest
-      // of the loop AND the watermark write below it, so the exact same
-      // poisoned row was re-fetched and re-thrown on every future cycle -
-      // permanently stuck, indistinguishable from "sync is broken".
-      maxSeen = Math.max(maxSeen, row.updated_at);
-      try {
-        changed = (await applyRow(table, row)) || changed;
-      } catch (rowErr) {
-        console.warn('[sync] applyRow threw', table, row.id, rowErr);
-        noteFailure(`pull ${table} row ${row.id}: ${String((rowErr as { message?: string })?.message ?? rowErr).slice(0, 200)}`);
-      }
-    }
+    // the watermark advances BEFORE applyRow runs (beforeEach), so one
+    // malformed row can never wedge the whole pull forever - see
+    // applyRowsSafely's comment. Before this guard, a single throw aborted
+    // the rest of the loop AND the watermark write below it, so the exact
+    // same poisoned row was re-fetched and re-thrown on every future cycle -
+    // permanently stuck, indistinguishable from "sync is broken".
+    changed = (await applyRowsSafely(table, (data ?? []) as Row[], (row) => { maxSeen = Math.max(maxSeen, row.updated_at); })) || changed;
   }
   // advance the watermark only when the core tables pulled clean, so a
   // failed pull is retried from the same spot instead of skipping rows
@@ -850,7 +856,28 @@ onOutboxFlush(() => scheduleSync());
     device made and we have not yet seen, instead of a stale cached copy
     racing a genuinely newer edit on updated_at alone (a pending edit of
     OURS still wins either way - applyRow checks the outbox, not push order). */
-export async function syncNow(): Promise<void> {
+export function syncNow(): Promise<void> {
+  if (inFlightSync) return inFlightSync; // see inFlightSync's own comment
+  const run = runSyncCycle().finally(() => {
+    if (inFlightSync === run) inFlightSync = null;
+  });
+  inFlightSync = run;
+  return run;
+}
+
+// Concurrent callers on the SAME tick (e.g. auth.ts's resume listener and
+// update.ts's reloadAfterSync, both firing on one visibilitychange) share
+// this ONE real cycle instead of each kicking off their own. Without this,
+// the second caller's pullThenNotify()/pushOutbox() calls would just see the
+// first's own inner guard already set, queue behind it (pullQueued/
+// pushQueued), and run a full extra pull+push pass once the first finished -
+// 2-3x the network work for one event. Worse for reloadAfterSync specifically:
+// its own syncNow() call would resolve almost immediately in that case
+// (queueing, not awaiting, the real work), undermining the "wait for sync to
+// actually land before reloading" guarantee it exists for.
+let inFlightSync: Promise<void> | null = null;
+
+async function runSyncCycle(): Promise<void> {
   if (!supabase || !session) return;
   cycleFailed = false;
   authTrouble = false;
@@ -877,7 +904,7 @@ export async function syncNow(): Promise<void> {
     // "Sync failed" with zero diagnostic - exactly what made this bug so
     // hard to find in the first place.
     console.warn('[sync] cycle threw', err);
-    noteFailure(`sync cycle: ${String((err as { message?: string })?.message ?? err).slice(0, 200)}`);
+    noteFailure(`sync cycle: ${errMsg(err)}`);
   }
   if (!cycleFailed) {
     skewBackoff = 3000;

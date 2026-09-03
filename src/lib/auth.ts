@@ -96,8 +96,11 @@ if (supabase) {
   document.addEventListener('visibilitychange', () => {
     // coming back: a suspended WebSocket does not always report its own
     // death (iOS backgrounding especially) - force a fresh subscription
-    // rather than trust a channel object that merely still exists
-    if (document.visibilityState === 'visible') restartRealtime();
+    // rather than trust a channel object that merely still exists. Only
+    // when we don't already have positive proof it's alive, though - a
+    // quick alt-tab fires this same event, and reconnecting a channel that
+    // was never actually dead is a pointless teardown/renegotiation.
+    if (document.visibilityState === 'visible' && !isRealtimeDelivering()) restartRealtime();
     void syncNow(); // hidden: flush out; visible: pull in
   });
 }
